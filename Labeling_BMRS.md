@@ -10,23 +10,23 @@ BMRS shares many parts of its algorithm with BRTS. If you have not read [Labelin
 
 1-bit per pixel format makes many collective operations on pixels can be done very effectively. Some of them turn out to be useful to find connected parts. See two-row data described below as an example.
 
-<img src="doc\BMRS\2row.png" alt="2row" style="zoom:100%;" /> 
+<img src="doc/BMRS/2row.png" alt="2row" style="zoom:100%;" /> 
 
 What is the most effective CCL algorithm for this kind of data? If the data are in 1-bit per pixel format, the answer is simple. One can simply find the answer using bitwise OR operation on the upper layer and the lower layer as operands. It gives
 
-<img src="doc\BMRS\2row_m.png" alt="2row_m" style="zoom:100%;" /> 
+<img src="doc/BMRS/2row_m.png" alt="2row_m" style="zoom:100%;" /> 
 
 which clearly has four connected chunks. They turn out to be equivalent to four connected components exist in the original data. The whole idea of BMRS is based on this property. It merges two lines and apply the bit-scanning algorithm on those merged bits. If the data has 5 rows, they can be grouped like this.
 
-<img src="doc\BMRS\5row.png" alt="5row" style="zoom:100%;" /> 
+<img src="doc/BMRS/5row.png" alt="5row" style="zoom:100%;" /> 
 
 BMRS first merges every two rows in a group using the bitwise OR operator. This gives new data as below.
 
-<img src="doc\BMRS\5row_m.png" alt="5row_m" style="zoom:100%;" /> 
+<img src="doc/BMRS/5row_m.png" alt="5row_m" style="zoom:100%;" /> 
 
 Unfortunately, many connected parts of this data are actually disconnected. It looks like the 5-10 bits of the first line and the second line are definitely connected in the picture above. This marked area of the original data shows that they aren't. 
 
-<img src="doc\BMRS\5row_disc.png" alt="5row_disc" style="zoom:100%;" /> 
+<img src="doc/BMRS/5row_disc.png" alt="5row_disc" style="zoom:100%;" /> 
 
 Note that if *any* of the bits in the first layer of this marked area is connected to *any* of the second layer, they would be all connected, for it's already guaranteed that every bits of the upper layer and lower layer are connected respectively. Checking if there is a part connected between the two is actually easy. Let us call the upper one `u` and the lower one `d`. There should be at least one connected part if and only if the result of this operation is nonzero.
 
@@ -111,7 +111,7 @@ for (; runs != runs_end; runs++) {
 		unsigned short start_pos = runs->start_pos;
 		if (start_pos == 0xFFFF) break;
 
-		//Skip upper runs ends before this slice starts 
+		//Skip upper runs end before this run starts 
 		for (; runs_up->end_pos < start_pos; runs_up++);
 
 		//No upper run meets this
@@ -122,29 +122,37 @@ for (; runs != runs_end; runs++) {
 		};
 
 		//Next upper run can not meet this
+		unsigned short cross_st = (start_pos >= runs_up->start_pos) ? start_pos : runs_up->start_pos;
 		if (end_pos <= runs_up->end_pos) {
-			unsigned short cross_st = (start_pos >= runs_up->start_pos) ? start_pos : runs_up->start_pos;
 			if (CCL_BMRS_X64_is_connected(flags, cross_st, end_pos)) runs->label = labelsolver.GetLabel(runs_up->label);
 			else runs->label = labelsolver.NewLabel();
 			continue;
 		}
 
 		unsigned label;
-		unsigned short cross_st = (start_pos >= runs_up->start_pos) ? start_pos : runs_up->start_pos;
 		if (CCL_BMRS_X64_is_connected(flags, cross_st, runs_up->end_pos)) label = labelsolver.GetLabel(runs_up->label);
 		else label = 0;
 		runs_up++;
-		
+
 		//Find next upper runs meet this
 		for (; runs_up->start_pos <= end_pos; runs_up++) {
-			unsigned short cross_st = (start_pos >= runs_up->start_pos) ? start_pos : runs_up->start_pos;
-			unsigned short cross_ed = (end_pos <= runs_up->end_pos) ? end_pos : runs_up->end_pos;
-			if (CCL_BMRS_X64_is_connected(flags, cross_st, cross_ed)) {
-				unsigned label_other = labelsolver.GetLabel(runs_up->label);
-				if (!label) label = label_other;
-				else if (label != label_other) label = labelsolver.Merge(label, label_other);
+			if (end_pos <= runs_up->end_pos) {
+				if (CCL_BMRS_X64_is_connected(flags, runs_up->start_pos, end_pos)) {
+					unsigned label_other = labelsolver.GetLabel(runs_up->label);
+					if (label != label_other) {
+						label = (label) ? labelsolver.Merge(label, label_other) : label_other;
+					}
+				}
+				break;
 			}
-			if (end_pos <= runs_up->end_pos) break;
+			else {
+				if (CCL_BMRS_X64_is_connected(flags, runs_up->start_pos, runs_up->end_pos)) {
+					unsigned label_other = labelsolver.GetLabel(runs_up->label);
+					if (label != label_other) {
+						label = (label) ? labelsolver.Merge(label, label_other) : label_other;
+					}
+				}
+			}
 		}
 
 		if (label) runs->label = label;
@@ -180,14 +188,11 @@ for (size_t i = 0; i < height / 2; i++) {
 		unsigned short end_pos = runs->end_pos;
 		unsigned label = labelsolver.GetLabel(runs->label);
 
-		if (start_pos > j) {
-			labels_u[j] = 0, labels_d[j] = 0;
-			for (size_t k = j + 1; k < start_pos; k++) labels_u[k] = 0;
-			for (size_t k = j + 1; k < start_pos; k++) labels_d[k] = 0;
+		for (; j < start_pos; j++) labels_u[j] = 0, labels_d[j] = 0;
+		for (; j < end_pos; j++) {
+			labels_u[j] = (data_u[j >> 3] & (1 << (j & 0x07))) ? label : 0;
+			labels_d[j] = (data_d[j >> 3] & (1 << (j & 0x07))) ? label : 0;
 		}
-		for (size_t k = start_pos; k < end_pos; k++) labels_u[k] = (data_u[k >> 3] & (1 << (k & 0x07))) ? label : 0;
-		for (size_t k = start_pos; k < end_pos; k++) labels_d[k] = (data_d[k >> 3] & (1 << (k & 0x07))) ? label : 0;
-		j = end_pos;
 	}
 }
 if (height % 2) {
