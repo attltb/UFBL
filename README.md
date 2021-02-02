@@ -72,7 +72,7 @@ void Labeling_BMRS_X64(unsigned* dest, const void* source, int height, int width
 
 UFBL is a project which orients fast execution speed. One may want to know how fast each of the algorithms work. Files in [benchmark/](benchmark) folder do not need to run UFBL algorithm. It allows one to test each UFBL algorithms in his system. 
 
- ![tst](doc\tst.png)
+ ![tst](doc/tst.png)
 
 The benchmark program includes 5 different algorithm. The old [two-pass](https://en.wikipedia.org/wiki/Connected-component_labeling#Two-pass) algorithm, the [run-based two-scan](https://www.researchgate.net/publication/5462954_A_Run-Based_Two-Scan_Labeling_Algorithm) algorithm found by Lifeng He, Yuyan Chao and Kenji Suzuki (slightly improved by me), and UFBL algorithms. It also contains null algorithm which just copy input data for comparision. 
 
@@ -149,6 +149,7 @@ The charts above also don't show the real shortcomings of the BRTS algorithm I h
     <td align="center">granularity 8</td>
   </tr>
 </table>
+
 For most random images with 50% foreground density and granularity 1, BMRS beats all of other CCL algorithms which only use CPU by far margin. All of these results show that UFBL algorithms are not only good for processing bit-compressed data, but a competitive CCL algorithm in general. 
 
 See the documents [Labeling_BRTS.md](Labeling_BRTS.md) and [Labeling_BMRS.md](Labeling_BMRS.md) if you want to know exactly how UFBL algorithms work. Each algorithms are explained in those document in detail. Contributions of any kind are welcome. 
