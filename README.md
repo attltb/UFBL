@@ -150,6 +150,6 @@ The charts above also don't show the real shortcomings of the BRTS algorithm I h
   </tr>
 </table>
 
-For most random images with 50% foreground density and granularity 1, BMRS beats all of other CCL algorithms which only use CPU by far margin. All of these results show that UFBL algorithms are not only good for processing bit-compressed data, but a competitive CCL algorithm in general. 
+For most random images with 50% foreground density and granularity 1, BMRS beats all of other known CCL algorithms (except GPU algorithms) by far margin. All of these results show that UFBL algorithms are not only good for processing bit-compressed data, but a competitive CCL algorithm in general. 
 
 See the documents [Labeling_BRTS.md](Labeling_BRTS.md) and [Labeling_BMRS.md](Labeling_BMRS.md) if you want to know exactly how UFBL algorithms work. Each algorithms are explained in those document in detail. Contributions of any kind are welcome. 
