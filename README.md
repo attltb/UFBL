@@ -22,7 +22,7 @@ BRTS supports both 4-connectivity and 8-connectivity, while BMRS only supports 8
     <th>Required Files</th>
   </tr>	
   <tr>
-    <td align="center">Bit Run Three Scan</td>
+    <td align="center">Bit Run Two Scan</td>
     <td align="center">4-connectivity</td>
     <td align="center">x86</td>
     <td align="center"><i>Labeling_BRTS_4c_x86.h</i>, <i>Labeling_BRTS_4c_x86.cpp</i></td>
