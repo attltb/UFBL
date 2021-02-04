@@ -10,7 +10,7 @@ Using 1-bit per pixel format on binary data not only saves memory, but also allo
 
 ## How to use
 
-UFBL contains two algorithms named Bit-Run-Three-Scan (BRTS) and Bit-Merge-Run-Scan (BMRS). Each algorithms only requires one source file, one header file, and a common header named *label_solver.h*. The common header contains code for a data structure named Union-Find with path compression (UFPC) label solver which is developed by Kesheng Wu, Ekow Otoo and Kenji Suzuki.
+UFBL contains two algorithms named Bit-Run Two Scan (BRTS) and Bit-Merge-Run Scan (BMRS). Each algorithms only requires one source file, one header file, and a common header named *label_solver.h*. The common header contains code for a data structure named Union-Find with path compression (UFPC) label solver which is developed by Kesheng Wu, Ekow Otoo and Kenji Suzuki.
 
 BRTS supports both 4-connectivity and 8-connectivity, while BMRS only supports 8-connectivity. Since each algorithms has two versions which work on x86 processor and x64 processor, total 6 version of UFBL algorithm are available.
 
@@ -60,7 +60,7 @@ BRTS supports both 4-connectivity and 8-connectivity, while BMRS only supports 8
 </table>
 To use BMRS algorithm in your 64-bit program, for example, you only have to include *Labeling_BMRS_8c_x64.h*, *Labeling_BMRS_8c_x64.cpp* and *label_solver.h*  in your project. The converting function is declared in *Labeling_BMRS_8c_x64.h*. 
 
-```
+```C++
 void Labeling_BMRS_X64(unsigned* dest, const void* source, int height, int width, int alignment = 8);
 ```
 
@@ -90,7 +90,7 @@ It's impossible to include UFBL algorithms directly in YACCLAB since they only u
 
 The folder also includes results I got on my computers. Surprisingly enough, even those pseudo-UFBL algorithms which are supposed to be slower than the original turn out to be almost as fast as some of the best algorithms currently (2021) known.
 
-Here is some results I got on AMD Ryzen 3 2200G processor using [YACCLAB](https://github.com/prittt/YACCLAB). The rightmost two algorithms, Bit-Run-Three-Scan (BRTS) and Bit-Merge-Run-Scan (BMRS) are the new algorithms introduced by UFBL.
+Here is some results I got on AMD Ryzen 3 2200G processor using [YACCLAB](https://github.com/prittt/YACCLAB). The rightmost two algorithms, Bit-Run Two Scan (BRTS) and Bit-Merge-Run Scan (BMRS) are the new algorithms introduced by UFBL.
 
 <table>
   <tr>

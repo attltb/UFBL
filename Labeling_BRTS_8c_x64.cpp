@@ -17,8 +17,12 @@ struct Runs {
 		delete[] runs;
 	}
 };
+inline void CCL_BRTS8_X64_FindRuns(const unsigned __int64* bits_start, int height, int data_width, Run* runs, UFPC& labelsolver) {
+	Run* runs_up = runs;
 
-inline Run* CCL_BRTS8_X64_FindRuns(const unsigned __int64* bits, const unsigned __int64* bit_final, Run* runs) {
+	//process runs in the first row
+	const unsigned __int64* bits = bits_start;
+	const unsigned __int64* bit_final = bits + data_width;
 	unsigned __int64 working_bits = *bits;
 	unsigned long basepos = 0, bitpos = 0;
 	for (;; runs++) {
@@ -28,7 +32,8 @@ inline Run* CCL_BRTS8_X64_FindRuns(const unsigned __int64* bits, const unsigned 
 			if (bits == bit_final) {
 				runs->start_pos = (short)0xFFFF;
 				runs->end_pos = (short)0xFFFF;
-				return runs + 1;
+				runs++;
+				goto out;
 			}
 			working_bits = *bits;
 		}
@@ -38,38 +43,51 @@ inline Run* CCL_BRTS8_X64_FindRuns(const unsigned __int64* bits, const unsigned 
 		working_bits = (~working_bits) & (0xFFFFFFFFFFFFFFFF << bitpos);
 		while (!_BitScanForward64(&bitpos, working_bits)) {
 			bits++, basepos += 64;
-			if (bits == bit_final) {
-				runs->end_pos = short(basepos), runs++;
-				runs->start_pos = (short)0xFFFF;
-				runs->end_pos = (short)0xFFFF;
-				return runs + 1;
-			}
 			working_bits = ~(*bits);
 		}
 		working_bits = (~working_bits) & (0xFFFFFFFFFFFFFFFF << bitpos);
 		runs->end_pos = short(basepos + bitpos);
+		runs->label = labelsolver.NewLabel();
 	}
-}
-inline void CCL_BRTS8_X64_GenerateLabelsOnRun(Run* runs, Run* runs_end, UFPC& labelsolver) {
-	Run* runs_up = runs;
+out:
 
-	//generate labels for the first row
-	for (; runs->start_pos != 0xFFFF; runs++) runs->label = labelsolver.NewLabel();
-	runs++;
-
-	//generate labels for the rests
-	for (; runs != runs_end; runs++) {
+	//process runs in the rests
+	for (size_t row = 1; row < height; row++) {
 		Run* runs_save = runs;
+		const unsigned __int64* bits = bits_start + data_width * row;
+		const unsigned __int64* bit_final = bits + data_width;
+		unsigned __int64 working_bits = *bits;
+		unsigned long basepos = 0, bitpos = 0;
 		for (;; runs++) {
-			unsigned short start_pos = runs->start_pos;
-			if (start_pos == 0xFFFF) break;
+			//find starting position
+			while (!_BitScanForward64(&bitpos, working_bits)) {
+				bits++, basepos += 64;
+				if (bits == bit_final) {
+					runs->start_pos = (short)0xFFFF;
+					runs->end_pos = (short)0xFFFF;
+					runs++;
+					goto out2;
+				}
+				working_bits = *bits;
+			}
+			unsigned short start_pos = short(basepos + bitpos);
 
-			//Skip upper runs end before this run starts 
+			//find ending position
+			working_bits = (~working_bits) & (0xFFFFFFFFFFFFFFFF << bitpos);
+			while (!_BitScanForward64(&bitpos, working_bits)) {
+				bits++, basepos += 64;
+				working_bits = ~(*bits);
+			}
+			working_bits = (~working_bits) & (0xFFFFFFFFFFFFFFFF << bitpos);
+			unsigned short end_pos = short(basepos + bitpos);
+
+			//Skip upper runs end before this run starts
 			for (; runs_up->end_pos < start_pos; runs_up++);
 
 			//No upper run meets this
-			unsigned short end_pos = runs->end_pos;
 			if (runs_up->start_pos > end_pos) {
+				runs->start_pos = start_pos;
+				runs->end_pos = end_pos;
 				runs->label = labelsolver.NewLabel();
 				continue;
 			};
@@ -78,6 +96,8 @@ inline void CCL_BRTS8_X64_GenerateLabelsOnRun(Run* runs, Run* runs_end, UFPC& la
 
 			//Next upper run can not meet this
 			if (end_pos <= runs_up->end_pos) {
+				runs->start_pos = start_pos;
+				runs->end_pos = end_pos;
 				runs->label = label;
 				continue;
 			}
@@ -89,8 +109,12 @@ inline void CCL_BRTS8_X64_GenerateLabelsOnRun(Run* runs, Run* runs_end, UFPC& la
 				if (label != label_other) label = labelsolver.Merge(label, label_other);
 				if (end_pos <= runs_up->end_pos) break;
 			}
+			runs->start_pos = start_pos;
+			runs->end_pos = end_pos;
 			runs->label = label;
 		}
+
+	out2:
 		runs_up = runs_save;
 	}
 	labelsolver.Flatten();
@@ -124,17 +148,11 @@ void Labeling_BRTS8_X64(unsigned* dest, const void* source, int height, int widt
 	else data_width = row_bytes / 8, bits = (const unsigned __int64*)source;
 
 	//find runs
-	Runs Data_run(height, width);
-	Run* run_next = Data_run.runs;
-	const unsigned __int64* bits_m = bits;
-	for (int i = 0; i < height; i++, bits_m += data_width) {
-		run_next = CCL_BRTS8_X64_FindRuns(bits_m, bits_m + data_width, run_next);
-	}
-
 	UFPC labelsolver;
 	labelsolver.Alloc((size_t)((height + 1) / 2) * (size_t)((width + 1) / 2) + 1);
 	labelsolver.Setup();
-	CCL_BRTS8_X64_GenerateLabelsOnRun(Data_run.runs, run_next, labelsolver);
+	Runs Data_run(height, width);
+	CCL_BRTS8_X64_FindRuns(bits, height, data_width, Data_run.runs, labelsolver);
 
 	//generate label data
 	Run* runs = Data_run.runs;

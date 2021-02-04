@@ -30,13 +30,13 @@ Unfortunately, many connected parts of this data are actually disconnected. It l
 
 Note that if *any* of the bits in the first layer of this marked area is connected to *any* of the second layer, they would be all connected, for it's already guaranteed that every bits of the upper layer and lower layer are connected respectively. Checking if there is a part connected between the two is actually easy. Let us call the upper one `u` and the lower one `d`. There should be at least one connected part if and only if the result of this operation is nonzero.
 
-```
+```C++
 (u | (u << 1)) & (d | (d << 1))
 ```
 
 One doesn't have to calculate this whenever it needs. One can just pre-calculate this for every junction point and use them. See following codes.
 
-```
+```C++
 //generate flag bits
 Data_Compressed dt_flags(h_merge - 1, width);
 for (u32 i = 0; i < dt_flags.height; i++) {
@@ -61,8 +61,8 @@ for (u32 i = 0; i < dt_flags.height; i++) {
 
 After this flag bits are made, checking if a seemingly connected part of the merged data is really connected or not becomes very easy task. Here is the full inline function I use for that. `flag_bits` points the junction flag datas between two lines. 
 
-```
-inline unsigned __int64 CCL_BMRS_X64_is_connected(const unsigned __int64* flag_bits, unsigned start, unsigned end) {
+```C++
+inline unsigned __int64 is_connected(const unsigned __int64* flag_bits, unsigned start, unsigned end) {
 	if (start == end) return flag_bits[start >> 6] & ((unsigned __int64)1 << (start & 0x0000003F));
 
 	unsigned st_base = start >> 6;
@@ -91,85 +91,80 @@ To sum up, the bit-merging enables one to analyze only half amount of scan-lines
 
 
 
-## New second step: label generating
+## New label generating part
 
-The first step of BMRS which is to find runs in scan-lines is same with the first step of BRTS. The only difference is that it does the same thing on merged bits, not the original 1-bit per pixel input data. 
+BMRS uses the same bit-scanning code with BRTS to find starting and ending position of each run. The only difference is that it scans merged bits, not the original 1-bit per pixel data. The part generate labels, however, should be different. The new code for generating labels is as follows. This uses the function `is_connected` I previously have shown.
 
-The second step to generate labels, however, should be different. The new code to generates labels on runs is as follows. This uses the function `CCL_BMRS_X64_is_connected` I previously have shown.
+```C++
+Run* runs_save = runs;
 
-```
-Run* runs_up = runs;
+... //[initializing variables for bit-scanning]
+for (;; runs++) {
+	... //[bit-scanning]
 
-//generate labels for the first row
-for (; runs->start_pos != 0xFFFF; runs++) runs->label = labelsolver.NewLabel();
-runs++;
+	//Skip upper runs end before this slice starts
+	for (; runs_up->end_pos < start_pos; runs_up++);
 
-//generate labels for the rests
-for (; runs != runs_end; runs++) {
-	Run* runs_save = runs;
-	for (;; runs++) {
-		unsigned short start_pos = runs->start_pos;
-		if (start_pos == 0xFFFF) break;
+	//No upper run meets this
+	if (runs_up->start_pos > end_pos) {
+		runs->start_pos = start_pos;
+		runs->end_pos = end_pos;
+		runs->label = labelsolver.NewLabel();
+		continue;
+	};
 
-		//Skip upper runs end before this run starts 
-		for (; runs_up->end_pos < start_pos; runs_up++);
-
-		//No upper run meets this
-		unsigned short end_pos = runs->end_pos;
-		if (runs_up->start_pos > end_pos) {
-			runs->label = labelsolver.NewLabel();
-			continue;
-		};
-
-		//Next upper run can not meet this
-		unsigned short cross_st = (start_pos >= runs_up->start_pos) ? start_pos : runs_up->start_pos;
-		if (end_pos <= runs_up->end_pos) {
-			if (CCL_BMRS_X64_is_connected(flags, cross_st, end_pos)) runs->label = labelsolver.GetLabel(runs_up->label);
-			else runs->label = labelsolver.NewLabel();
-			continue;
-		}
-
-		unsigned label;
-		if (CCL_BMRS_X64_is_connected(flags, cross_st, runs_up->end_pos)) label = labelsolver.GetLabel(runs_up->label);
-		else label = 0;
-		runs_up++;
-
-		//Find next upper runs meet this
-		for (; runs_up->start_pos <= end_pos; runs_up++) {
-			if (end_pos <= runs_up->end_pos) {
-				if (CCL_BMRS_X64_is_connected(flags, runs_up->start_pos, end_pos)) {
-					unsigned label_other = labelsolver.GetLabel(runs_up->label);
-					if (label != label_other) {
-						label = (label) ? labelsolver.Merge(label, label_other) : label_other;
-					}
-				}
-				break;
-			}
-			else {
-				if (CCL_BMRS_X64_is_connected(flags, runs_up->start_pos, runs_up->end_pos)) {
-					unsigned label_other = labelsolver.GetLabel(runs_up->label);
-					if (label != label_other) {
-						label = (label) ? labelsolver.Merge(label, label_other) : label_other;
-					}
-				}
-			}
-		}
-
-		if (label) runs->label = label;
+	//Next upper run can not meet this
+	unsigned short cross_st = (start_pos >= runs_up->start_pos) ? start_pos : runs_up->start_pos;
+	if (end_pos <= runs_up->end_pos) {
+		if (is_connected(bits_f, cross_st, end_pos)) runs->label = labelsolver.GetLabel(runs_up->label);
 		else runs->label = labelsolver.NewLabel();
+		runs->start_pos = start_pos;
+		runs->end_pos = end_pos;
+		continue;
 	}
-	runs_up = runs_save;
-	flags += flag_width;
+
+	unsigned label;
+	if (is_connected(bits_f, cross_st, runs_up->end_pos)) label = labelsolver.GetLabel(runs_up->label);
+	else label = 0;
+	runs_up++;
+
+	//Find next upper runs meet this
+	for (; runs_up->start_pos <= end_pos; runs_up++) {
+		if (end_pos <= runs_up->end_pos) {
+			if (is_connected(bits_f, runs_up->start_pos, end_pos)) {
+				unsigned label_other = labelsolver.GetLabel(runs_up->label);
+				if (label != label_other) {
+					label = (label) ? labelsolver.Merge(label, label_other) : label_other;
+				}
+			}
+			break;
+		}
+		else {
+			if (is_connected(bits_f, runs_up->start_pos, runs_up->end_pos)) {
+				unsigned label_other = labelsolver.GetLabel(runs_up->label);
+				if (label != label_other) {
+					label = (label) ? labelsolver.Merge(label, label_other) : label_other;
+				}
+			}
+		}
+	}
+
+    if (label) runs->label = label;
+	else runs->label = labelsolver.NewLabel();
+	runs->start_pos = start_pos;
+	runs->end_pos = end_pos;
 }
+
+runs_up = runs_save;
 ```
 
 
 
-## New final step
+## New second scan
 
 In BMRS, each runs represents a connected part of merged two scanline. To transform this information into 2D label map, it writes two scanlines at once. The variables `labels_u`, `labels_d` represents the two scanline in the following code. 
 
-```
+```C++
 Run* runs = Data_run.runs;
 for (size_t i = 0; i < height / 2; i++) {
 	const char* data_u = (const char*)source + (size_t)row_bytes * 2 * i;
@@ -211,7 +206,7 @@ if (height % 2) {
 }
 ```
 
-This final step of BMRS is more inefficient then of BRTS. It makes BMRS a bit slower than BRTS when the input data is simple. Instead, BMRS runs faster when input image or data is complex. For most random images with 50% foreground density, BMRS beats every known CCL algorithms even when the original image is not in 1-bit per pixel format so it have to change the format first. 
+This second scan of BMRS is less efficient then of BRTS. It makes BMRS a bit slower than BRTS when the input data is simple. Instead, BMRS runs much faster when input image or data is complex. For most random images with 50% foreground density, BMRS beats every known CCL algorithms even when the original image is not in 1-bit per pixel format so it has to change the format first. 
 
 <table>
   <tr>
@@ -223,4 +218,4 @@ This final step of BMRS is more inefficient then of BRTS. It makes BMRS a bit sl
     <td align="center">Intel(R) Pentium(R) Gold G5420</td>
   </tr>
 </table>
-
+The benchmark result shows that BMRS is not just an algorithm specialized on 1-bit per pixel format, but a competitive CCL algorithm in general. See [YACCLAB/Results](YACCLAB/Results/) folder for the full results.

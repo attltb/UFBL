@@ -15,55 +15,63 @@ struct Runs {
 		delete[] runs;
 	}
 };
-inline Run* CCL_RBTS8_FindRuns(const unsigned int* pdata, int width, Run* runs) {
+inline void CCL_RBTS8_X86_FindRuns(const unsigned int* pdata, int height, int width, Run* runs, UFPC& labelsolver) {
+	Run* runs_up = runs;
+
 	for (int i = 0;; runs++) {
 		//find starting position
 		for (;; i++) {
-			if (i == width) {
+			if (i >= width) {
 				runs->start_pos = (short)0xFFFF;
 				runs->end_pos = (short)0xFFFF;
-				return runs + 1;
+				runs++;
+				goto out;
 			}
 			if (pdata[i]) break;
 		}
-		i++;
-		runs->start_pos = short(i);
+		runs->start_pos = short(i), i++;
 
 		//find ending position
 		for (;; i++) {
-			if (i == width) {
-				runs->end_pos = short(i);
-				runs++;
-				runs->start_pos = (short)0xFFFF;
-				runs->end_pos = (short)0xFFFF;
-				return runs + 1;
-			}
-			if (!pdata[i]) break;
+			if (i == width || !pdata[i]) break;
 		}
-		i++;
-		runs->end_pos = short(i);
+		runs->end_pos = short(i), i++;
+		runs->label = labelsolver.NewLabel();
 	}
-}
-inline void CCL_RBTS8_GenerateLabelsOnRun(Run* runs, Run* runs_end, UFPC& labelsolver) {
-	Run* runs_up = runs;
+out:
 
-	//generate labels for the first row
-	for (; runs->start_pos != 0xFFFF; runs++) runs->label = labelsolver.NewLabel();
-	runs++;
-
-	//generate labels for the rests
-	for (; runs != runs_end; runs++) {
+	//process runs in the rests
+	for (size_t row = 1; row < (size_t)height; row++) {
 		Run* runs_save = runs;
-		for (;; runs++) {
-			unsigned short start_pos = runs->start_pos;
-			if (start_pos == 0xFFFF) break;
+		pdata += width;
+		for (int i = 0;; runs++) {
+			//find starting position
+			for (;; i++) {
+				if (i >= width) {
+					runs->start_pos = (short)0xFFFF;
+					runs->end_pos = (short)0xFFFF;
+					runs++;
+					goto out2;
+				}
+				if (pdata[i]) break;
+			}
+			unsigned short start_pos = short(i);
+			i++;
 
-			//Skip upper runs end before this run starts 
+			//find ending position
+			for (;; i++) {
+				if (i == width || !pdata[i]) break;
+			}
+			unsigned short end_pos = short(i);
+			i++;
+
+			//Skip upper runs end before this run starts
 			for (; runs_up->end_pos < start_pos; runs_up++);
 
 			//No upper run meets this
-			unsigned short end_pos = runs->end_pos;
 			if (runs_up->start_pos > end_pos) {
+				runs->start_pos = start_pos;
+				runs->end_pos = end_pos;
 				runs->label = labelsolver.NewLabel();
 				continue;
 			};
@@ -72,6 +80,8 @@ inline void CCL_RBTS8_GenerateLabelsOnRun(Run* runs, Run* runs_end, UFPC& labels
 
 			//Next upper run can not meet this
 			if (end_pos <= runs_up->end_pos) {
+				runs->start_pos = start_pos;
+				runs->end_pos = end_pos;
 				runs->label = label;
 				continue;
 			}
@@ -83,8 +93,12 @@ inline void CCL_RBTS8_GenerateLabelsOnRun(Run* runs, Run* runs_end, UFPC& labels
 				if (label != label_other) label = labelsolver.Merge(label, label_other);
 				if (end_pos <= runs_up->end_pos) break;
 			}
+			runs->start_pos = start_pos;
+			runs->end_pos = end_pos;
 			runs->label = label;
 		}
+
+	out2:
 		runs_up = runs_save;
 	}
 	labelsolver.Flatten();
@@ -95,16 +109,11 @@ void run_based_algorithm_8c(const Data& data, Data& data_labels) {
 	int width = data.width;
 
 	//find runs
-	Runs Data_run(height, width);
-	Run* run_next = Data_run.runs;
-	for (int i = 0; i < height; i++) {
-		run_next = CCL_RBTS8_FindRuns(data.data[i], width, run_next);
-	}
-
 	UFPC labelsolver;
 	labelsolver.Alloc((size_t)((height + 1) / 2) * (size_t)((width + 1) / 2) + 1);
 	labelsolver.Setup();
-	CCL_RBTS8_GenerateLabelsOnRun(Data_run.runs, run_next, labelsolver);
+	Runs Data_run(height, width);
+	CCL_RBTS8_X86_FindRuns(data.raw, height, width, Data_run.runs, labelsolver);
 
 	//generate label data
 	Run* runs = Data_run.runs;

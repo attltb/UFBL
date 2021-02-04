@@ -16,33 +16,6 @@ struct Runs {
 		delete[] runs;
 	}
 };
-
-inline Run* CCL_BMRS_X86_FindRuns(const unsigned int* bits, const unsigned int* bit_final, Run* runs) {
-	unsigned int working_bits = *bits;
-	unsigned long basepos = 0, bitpos = 0;
-	for (;; runs++) {
-		//find starting position
-		while (!_BitScanForward(&bitpos, working_bits)) {
-			bits++, basepos += 32;
-			if (bits == bit_final) {
-				runs->start_pos = (short)0xFFFF;
-				runs->end_pos = (short)0xFFFF;
-				return runs + 1;
-			}
-			working_bits = *bits;
-		}
-		runs->start_pos = short(basepos + bitpos);
-
-		//find ending position
-		working_bits = (~working_bits) & (0xFFFFFFFF << bitpos);
-		while (!_BitScanForward(&bitpos, working_bits)) {
-			bits++, basepos += 32;
-			working_bits = ~(*bits);
-		}
-		working_bits = (~working_bits) & (0xFFFFFFFF << bitpos);
-		runs->end_pos = short(basepos + bitpos);
-	}
-}
 inline unsigned int CCL_BMRS_X86_is_connected(const unsigned int* flag_bits, unsigned start, unsigned end) {
 	if (start == end) return flag_bits[start >> 5] & (1 << (start & 0x0000001F));
 
@@ -64,26 +37,79 @@ inline unsigned int CCL_BMRS_X86_is_connected(const unsigned int* flag_bits, uns
 	if (flag_bits[ed_base] & cutter_ed) return true;
 	return false;
 }
-inline void CCL_BMRS_X86_GenerateLabelsOnRun(const unsigned int* flags, int flag_width, Run* runs, Run* runs_end, UFPC& labelsolver) {
+inline void CCL_BMRS_X86_FindRuns(const unsigned int* bits_start, const unsigned int* bits_flag, int height, int data_width, Run* runs, UFPC& labelsolver) {
 	Run* runs_up = runs;
 
-	//generate labels for the first row
-	for (; runs->start_pos != 0xFFFF; runs++) runs->label = labelsolver.NewLabel();
-	runs++;
+	//process runs in the first merged row
+	const unsigned int* bits = bits_start;
+	const unsigned int* bit_final = bits + data_width;
+	unsigned int working_bits = *bits;
+	unsigned long basepos = 0, bitpos = 0;
+	for (;; runs++) {
+		//find starting position
+		while (!_BitScanForward(&bitpos, working_bits)) {
+			bits++, basepos += 32;
+			if (bits == bit_final) {
+				runs->start_pos = (short)0xFFFF;
+				runs->end_pos = (short)0xFFFF;
+				runs++;
+				goto out;
+			}
+			working_bits = *bits;
+		}
+		runs->start_pos = short(basepos + bitpos);
 
-	//generate labels for the rests
-	for (; runs != runs_end; runs++) {
+		//find ending position
+		working_bits = (~working_bits) & (0xFFFFFFFF << bitpos);
+		while (!_BitScanForward(&bitpos, working_bits)) {
+			bits++, basepos += 32;
+			working_bits = ~(*bits);
+		}
+		working_bits = (~working_bits) & (0xFFFFFFFF << bitpos);
+		runs->end_pos = short(basepos + bitpos);
+		runs->label = labelsolver.NewLabel();
+	}
+out:
+
+	//process runs in the rests
+	for (size_t row = 1; row < height; row++) {
 		Run* runs_save = runs;
-		for (;; runs++) {
-			unsigned short start_pos = runs->start_pos;
-			if (start_pos == 0xFFFF) break;
+		const unsigned int* bits_f = bits_flag + data_width * (row - 1);
+		const unsigned int* bits = bits_start + data_width * row;
+		const unsigned int* bit_final = bits + data_width;
+		unsigned int working_bits = *bits;
+		unsigned long basepos = 0, bitpos = 0;
 
-			//Skip upper runs end before this run starts 
+		for (;; runs++) {
+			//find starting position
+			while (!_BitScanForward(&bitpos, working_bits)) {
+				bits++, basepos += 32;
+				if (bits == bit_final) {
+					runs->start_pos = (short)0xFFFF;
+					runs->end_pos = (short)0xFFFF;
+					runs++;
+					goto out2;
+				}
+				working_bits = *bits;
+			}
+			unsigned short start_pos = short(basepos + bitpos);
+
+			//find ending position
+			working_bits = (~working_bits) & (0xFFFFFFFF << bitpos);
+			while (!_BitScanForward(&bitpos, working_bits)) {
+				bits++, basepos += 32;
+				working_bits = ~(*bits);
+			}
+			working_bits = (~working_bits) & (0xFFFFFFFF << bitpos);
+			unsigned short end_pos = short(basepos + bitpos);
+
+			//Skip upper runs end before this slice starts
 			for (; runs_up->end_pos < start_pos; runs_up++);
 
 			//No upper run meets this
-			unsigned short end_pos = runs->end_pos;
 			if (runs_up->start_pos > end_pos) {
+				runs->start_pos = start_pos;
+				runs->end_pos = end_pos;
 				runs->label = labelsolver.NewLabel();
 				continue;
 			};
@@ -91,20 +117,22 @@ inline void CCL_BMRS_X86_GenerateLabelsOnRun(const unsigned int* flags, int flag
 			//Next upper run can not meet this
 			unsigned short cross_st = (start_pos >= runs_up->start_pos) ? start_pos : runs_up->start_pos;
 			if (end_pos <= runs_up->end_pos) {
-				if (CCL_BMRS_X86_is_connected(flags, cross_st, end_pos)) runs->label = labelsolver.GetLabel(runs_up->label);
+				if (CCL_BMRS_X86_is_connected(bits_f, cross_st, end_pos)) runs->label = labelsolver.GetLabel(runs_up->label);
 				else runs->label = labelsolver.NewLabel();
+				runs->start_pos = start_pos;
+				runs->end_pos = end_pos;
 				continue;
 			}
 
 			unsigned label;
-			if (CCL_BMRS_X86_is_connected(flags, cross_st, runs_up->end_pos)) label = labelsolver.GetLabel(runs_up->label);
+			if (CCL_BMRS_X86_is_connected(bits_f, cross_st, runs_up->end_pos)) label = labelsolver.GetLabel(runs_up->label);
 			else label = 0;
 			runs_up++;
 
 			//Find next upper runs meet this
 			for (; runs_up->start_pos <= end_pos; runs_up++) {
 				if (end_pos <= runs_up->end_pos) {
-					if (CCL_BMRS_X86_is_connected(flags, runs_up->start_pos, end_pos)) {
+					if (CCL_BMRS_X86_is_connected(bits_f, runs_up->start_pos, end_pos)) {
 						unsigned label_other = labelsolver.GetLabel(runs_up->label);
 						if (label != label_other) {
 							label = (label) ? labelsolver.Merge(label, label_other) : label_other;
@@ -113,7 +141,7 @@ inline void CCL_BMRS_X86_GenerateLabelsOnRun(const unsigned int* flags, int flag
 					break;
 				}
 				else {
-					if (CCL_BMRS_X86_is_connected(flags, runs_up->start_pos, runs_up->end_pos)) {
+					if (CCL_BMRS_X86_is_connected(bits_f, runs_up->start_pos, runs_up->end_pos)) {
 						unsigned label_other = labelsolver.GetLabel(runs_up->label);
 						if (label != label_other) {
 							label = (label) ? labelsolver.Merge(label, label_other) : label_other;
@@ -124,9 +152,11 @@ inline void CCL_BMRS_X86_GenerateLabelsOnRun(const unsigned int* flags, int flag
 
 			if (label) runs->label = label;
 			else runs->label = labelsolver.NewLabel();
+			runs->start_pos = start_pos;
+			runs->end_pos = end_pos;
 		}
+	out2:
 		runs_up = runs_save;
-		flags += flag_width;
 	}
 	labelsolver.Flatten();
 }
@@ -198,18 +228,11 @@ void Labeling_BMRS_X86(unsigned* dest, const void* source, int height, int width
 	}
 
 	//find runs
-	Runs Data_run(h_merge, width);
-	Run* run_next = Data_run.runs;
-	for (int i = 0; i < h_merge; i++) {
-		const unsigned int* bits = bits_merged + data_width * (size_t)i;
-		run_next = CCL_BMRS_X86_FindRuns(bits, bits + data_width, run_next);
-	}
-
-	//create label table
 	UFPC labelsolver;
 	labelsolver.Alloc((size_t)((height + 1) / 2) * (size_t)((width + 1) / 2) + 1);
 	labelsolver.Setup();
-	CCL_BMRS_X86_GenerateLabelsOnRun(bit_flags, data_width, Data_run.runs, run_next, labelsolver);
+	Runs Data_run(h_merge, width);
+	CCL_BMRS_X86_FindRuns(bits_merged, bit_flags, h_merge, data_width, Data_run.runs, labelsolver);
 
 	//generate label data 
 	Run* runs = Data_run.runs;
