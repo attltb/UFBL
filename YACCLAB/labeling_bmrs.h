@@ -771,8 +771,6 @@ private:
         return t - perf_.last();
     }
     double AllocRunCorrect(double& t_run_pagealloc_max, double& t_run_callalloc) {
-        int page_size = 4194304; //usual page size in modern system
-
         Run* run_start = data_runs.runs;
         Run* run_end = run_start;
         for (size_t i = 0; i < data_runs.height; i++, run_end++) {
@@ -780,11 +778,7 @@ private:
         }
         Run* run_max = run_start + (data_runs.height * (data_runs.width / 2 + 2) + 1);
 
-        size_t page_st = (size_t)run_start / page_size;
-        size_t page_ed = (size_t)run_end / page_size;
-        size_t page_max = (size_t)run_max / page_size;
-
-        double rate = double(page_ed - page_st + 1) / double(page_max - page_st + 1);
+        double rate = double((size_t)run_end - (size_t)run_start) / double((size_t)run_max - (size_t)run_start);
         return rate * t_run_pagealloc_max + t_run_callalloc;
     }
     void Dealloc() {
