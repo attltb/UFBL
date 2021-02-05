@@ -153,8 +153,6 @@ public:
     }
     void PerformLabelingWithSteps() {
         double alloc_timing = Alloc();
-        double t_run_callalloc = 0;
-        double t_run_pagealloc_max = AllocRunMax(t_run_callalloc);
 
         perf_.start();
         FirstScan();
@@ -166,7 +164,7 @@ public:
         perf_.stop();
         perf_.store(Step(StepType::SECOND_SCAN), perf_.last());
 
-        double t_runalloc = AllocRunCorrect(t_run_pagealloc_max, t_run_callalloc);
+        double t_runalloc = Get_RunAllocTime();
         perf_.start();
         Dealloc();
         perf_.stop();
@@ -751,6 +749,9 @@ private:
         perf_.stop();
         double t = perf_.last();
 
+        // Run metadata allocation time will be calculated later
+        data_runs.Alloc(h_merge, w);
+
         perf_.start();
         memset(img_labels_.data, 0, img_labels_.dataend - img_labels_.datastart);
         memset(data_compressed.bits, 0, data_compressed.height * data_compressed.data_width * sizeof(unsigned __int64));
@@ -762,36 +763,28 @@ private:
         // Return total time
         return ls_t + ma_t;
     }
-    double AllocRunMax(double& t_run_callalloc) {
-        int w(img_.cols);
-        int h(img_.rows);
-        int h_merge = h / 2 + h % 2;
-
-        perf_.start();
-        data_runs.Alloc(h_merge, w);
-        perf_.stop();
-        t_run_callalloc = perf_.last();
-
-        perf_.start();
-        memset(data_runs.runs, 0, (data_runs.height * (data_runs.width / 2 + 2) + 1) * sizeof(Run));
-        perf_.stop();
-        double t = perf_.last();
-
-        perf_.start();
-        memset(data_runs.runs, 0, (data_runs.height * (data_runs.width / 2 + 2) + 1) * sizeof(Run));
-        perf_.stop();
-        return t - perf_.last();
-    }
-    double AllocRunCorrect(double& t_run_pagealloc_max, double& t_run_callalloc) {
+    double Get_RunAllocTime() {
         Run* run_start = data_runs.runs;
         Run* run_end = run_start;
         for (size_t i = 0; i < data_runs.height; i++, run_end++) {
             for (; run_end->start_pos != 0xFFFF; run_end++);
         }
-        Run* run_max = run_start + (data_runs.height * (data_runs.width / 2 + 2) + 1);
+        size_t size_used = (size_t)run_end - (size_t)run_start;
 
-        double rate = double((size_t)run_end - (size_t)run_start) / double((size_t)run_max - (size_t)run_start);
-        return rate * t_run_pagealloc_max + t_run_callalloc;
+        Runs runs_temp;
+        perf_.start();
+        runs_temp.Alloc(data_runs.height, data_runs.width);
+        memset(runs_temp.runs, 0, size_used);
+        perf_.stop();
+        double t = perf_.last();
+
+        perf_.start();
+        memset(runs_temp.runs, 0, size_used);
+        perf_.stop();
+        double t_result = t - perf_.last();
+
+        runs_temp.Dealloc();
+        return t_result;
     }
     void Dealloc() {
         LabelsSolver::Dealloc();
