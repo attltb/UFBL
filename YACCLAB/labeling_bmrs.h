@@ -258,7 +258,7 @@ public:
                     break;
                 }
                 unsigned short end_pos = runs->end_pos;
-                int label = LabelsSolver::GetLabel(runs->label);
+                int label = LabelsSolver::MemGetLabel(runs->label);
                 for (; j < start_pos; j++) img_labels(i, j) = 0;
                 for (j = start_pos; j < end_pos; j++) img_labels(i, j) = label;
             }
