@@ -18,36 +18,41 @@ The run metadata generating consists of two steps logically separated. One is to
 const unsigned __int64* bits = bits_start + data_width * row;
 const unsigned __int64* bit_final = bits + data_width;
 unsigned __int64 working_bits = *bits;
+unsigned __int64 working_bits_r = ~working_bits;
 unsigned long basepos = 0, bitpos = 0;
 for (;; runs++) {
 	//find starting position
+	working_bits &= 0xFFFFFFFFFFFFFFFF << bitpos;
 	while (!_BitScanForward64(&bitpos, working_bits)) {
 		bits++, basepos += 64;
-		if (bits == bit_final) {
+		if (bits >= bit_final) {
 			runs->start_pos = (short)0xFFFF;
 			runs->end_pos = (short)0xFFFF;
-			return runs + 1;
+			runs++;
+			goto out;
 		}
 		working_bits = *bits;
+		working_bits_r = ~working_bits;
 	}
 	runs->start_pos = short(basepos + bitpos);
-	
+
 	//find ending position
-	working_bits = (~working_bits) & (0xFFFFFFFFFFFFFFFF << bitpos);
-	while (!_BitScanForward64(&bitpos, working_bits)) {
+	working_bits_r &= 0xFFFFFFFFFFFFFFFF << bitpos;
+	while (!_BitScanForward64(&bitpos, working_bits_r)) {
 		bits++, basepos += 64;
 		if (bits == bit_final) {
-			runs->end_pos = short(basepos), runs++;
-			runs->start_pos = (short)0xFFFF;
-			runs->end_pos = (short)0xFFFF;
-			return runs + 1;
+			bitpos = 0;
+			working_bits = 0;
+			break;
 		}
-		working_bits = ~(*bits);
+		working_bits = *bits;
+		working_bits_r = ~working_bits;
 	}
-	working_bits = (~working_bits) & (0xFFFFFFFFFFFFFFFF << bitpos);
+	runs->end_pos = short(basepos + bitpos);
 
 	... //[label generating]
 }
+out:
 ```
 
 The code above look complex, but runs very fast. Surprisingly enough, even when the original data is 1-byte on pixel format, compressing it into 1-bit per pixel format and applying this trick turns out much faster than finding runs directly. (The compressing part don't take so long when compilers can optimize it with CMOV instruction.)

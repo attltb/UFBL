@@ -31,7 +31,7 @@ inline void CCL_BRTS8_X64_FindRuns(const unsigned __int64* bits_start, int heigh
 		working_bits &= 0xFFFFFFFFFFFFFFFF << bitpos;
 		while (!_BitScanForward64(&bitpos, working_bits)) {
 			bits++, basepos += 64;
-			if (bits == bit_final) {
+			if (bits >= bit_final) {
 				runs->start_pos = (short)0xFFFF;
 				runs->end_pos = (short)0xFFFF;
 				runs++;
@@ -46,6 +46,11 @@ inline void CCL_BRTS8_X64_FindRuns(const unsigned __int64* bits_start, int heigh
 		working_bits_r &= 0xFFFFFFFFFFFFFFFF << bitpos;
 		while (!_BitScanForward64(&bitpos, working_bits_r)) {
 			bits++, basepos += 64;
+			if (bits == bit_final) {
+				bitpos = 0;
+				working_bits = 0;
+				break;
+			}
 			working_bits = *bits;
 			working_bits_r = ~working_bits;
 		}
@@ -67,7 +72,7 @@ out:
 			working_bits &= 0xFFFFFFFFFFFFFFFF << bitpos;
 			while (!_BitScanForward64(&bitpos, working_bits)) {
 				bits++, basepos += 64;
-				if (bits == bit_final) {
+				if (bits >= bit_final) {
 					runs->start_pos = (short)0xFFFF;
 					runs->end_pos = (short)0xFFFF;
 					runs++;
@@ -82,6 +87,11 @@ out:
 			working_bits_r &= 0xFFFFFFFFFFFFFFFF << bitpos;
 			while (!_BitScanForward64(&bitpos, working_bits_r)) {
 				bits++, basepos += 64;
+				if (bits == bit_final) {
+					bitpos = 0;
+					working_bits = 0;
+					break;
+				}
 				working_bits = *bits;
 				working_bits_r = ~working_bits;
 			}
