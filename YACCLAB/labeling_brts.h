@@ -328,11 +328,9 @@ private:
         const unsigned __int64* bits = bits_start;
         const unsigned __int64* bit_final = bits + data_width;
         unsigned __int64 working_bits = *bits;
-        unsigned __int64 working_bits_r = ~working_bits;
         unsigned long basepos = 0, bitpos = 0;
         for (;; runs++) {
             //find starting position
-            working_bits &= 0xFFFFFFFFFFFFFFFF << bitpos;
             while (!_BitScanForward64(&bitpos, working_bits)) {
                 bits++, basepos += 64;
                 if (bits == bit_final) {
@@ -342,17 +340,16 @@ private:
                     goto out;
                 }
                 working_bits = *bits;
-                working_bits_r = ~working_bits;
             }
             runs->start_pos = short(basepos + bitpos);
 
             //find ending position
-            working_bits_r &= 0xFFFFFFFFFFFFFFFF << bitpos;
-            while (!_BitScanForward64(&bitpos, working_bits_r)) {
+            working_bits = (~working_bits) & (0xFFFFFFFFFFFFFFFF << bitpos);
+            while (!_BitScanForward64(&bitpos, working_bits)) {
                 bits++, basepos += 64;
-                working_bits = *bits;
-                working_bits_r = ~working_bits;
+                working_bits = ~(*bits);
             }
+            working_bits = (~working_bits) & (0xFFFFFFFFFFFFFFFF << bitpos);
 
             runs->end_pos = short(basepos + bitpos);
             runs->label = LabelsSolver::NewLabel();
@@ -365,11 +362,9 @@ private:
             const unsigned __int64* bits = bits_start + data_width * row;
             const unsigned __int64* bit_final = bits + data_width;
             unsigned __int64 working_bits = *bits;
-            unsigned __int64 working_bits_r = ~working_bits;
             unsigned long basepos = 0, bitpos = 0;
             for (;; runs++) {
                 //find starting position
-                working_bits &= 0xFFFFFFFFFFFFFFFF << bitpos;
                 while (!_BitScanForward64(&bitpos, working_bits)) {
                     bits++, basepos += 64;
                     if (bits == bit_final) {
@@ -379,17 +374,16 @@ private:
                         goto out2;
                     }
                     working_bits = *bits;
-                    working_bits_r = ~working_bits;
                 }
                 unsigned short start_pos = short(basepos + bitpos);
 
                 //find ending position
-                working_bits_r &= 0xFFFFFFFFFFFFFFFF << bitpos;
-                while (!_BitScanForward64(&bitpos, working_bits_r)) {
+                working_bits = (~working_bits) & (0xFFFFFFFFFFFFFFFF << bitpos);
+                while (!_BitScanForward64(&bitpos, working_bits)) {
                     bits++, basepos += 64;
-                    working_bits = *bits;
-                    working_bits_r = ~working_bits;
+                    working_bits = ~(*bits);
                 }
+                working_bits = (~working_bits) & (0xFFFFFFFFFFFFFFFF << bitpos);
                 unsigned short end_pos = short(basepos + bitpos);
 
                 //Skip upper runs end before this run starts
@@ -437,11 +431,9 @@ private:
         const unsigned __int64* bits = bits_start;
         const unsigned __int64* bit_final = bits + data_width;
         unsigned __int64 working_bits = *bits;
-        unsigned __int64 working_bits_r = ~working_bits;
         unsigned long basepos = 0, bitpos = 0;
         for (;; runs++) {
             //find starting position
-            working_bits &= 0xFFFFFFFFFFFFFFFF << bitpos;
             while (!_BitScanForward64(&bitpos, working_bits)) {
                 bits++, basepos += 64;
                 if (bits == bit_final) {
@@ -451,17 +443,16 @@ private:
                     goto out;
                 }
                 working_bits = *bits;
-                working_bits_r = ~working_bits;
             }
             runs->start_pos = short(basepos + bitpos);
 
             //find ending position
-            working_bits_r &= 0xFFFFFFFFFFFFFFFF << bitpos;
-            while (!_BitScanForward64(&bitpos, working_bits_r)) {
-                bits++, basepos += 64;
-                working_bits = *bits;
-                working_bits_r = ~working_bits;
+            working_bits = (~working_bits) & (0xFFFFFFFFFFFFFFFF << bitpos);
+            while (!_BitScanForward64(&bitpos, working_bits)) {
+                bits++, basepos += 64; 
+                working_bits = ~(*bits);
             }
+            working_bits = (~working_bits) & (0xFFFFFFFFFFFFFFFF << bitpos);
             runs->end_pos = short(basepos + bitpos);
             runs->label = LabelsSolver::MemNewLabel();
         }
@@ -473,11 +464,9 @@ private:
             const unsigned __int64* bits = bits_start + data_width * row;
             const unsigned __int64* bit_final = bits + data_width;
             unsigned __int64 working_bits = *bits;
-            unsigned __int64 working_bits_r = ~working_bits;
             unsigned long basepos = 0, bitpos = 0;
             for (;; runs++) {
                 //find starting position
-                working_bits &= 0xFFFFFFFFFFFFFFFF << bitpos;
                 while (!_BitScanForward64(&bitpos, working_bits)) {
                     bits++, basepos += 64;
                     if (bits == bit_final) {
@@ -487,17 +476,16 @@ private:
                         goto out2;
                     }
                     working_bits = *bits;
-                    working_bits_r = ~working_bits;
                 }
                 unsigned short start_pos = short(basepos + bitpos);
 
                 //find ending position
-                working_bits_r &= 0xFFFFFFFFFFFFFFFF << bitpos;
-                while (!_BitScanForward64(&bitpos, working_bits_r)) {
+                working_bits = (~working_bits) & (0xFFFFFFFFFFFFFFFF << bitpos);
+                while (!_BitScanForward64(&bitpos, working_bits)) {
                     bits++, basepos += 64;
-                    working_bits = *bits;
-                    working_bits_r = ~working_bits;
+                    working_bits = ~(*bits);
                 }
+                working_bits = (~working_bits) & (0xFFFFFFFFFFFFFFFF << bitpos);
                 unsigned short end_pos = short(basepos + bitpos);
 
                 //Skip upper runs end before this run starts

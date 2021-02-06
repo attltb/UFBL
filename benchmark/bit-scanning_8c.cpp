@@ -23,11 +23,9 @@ inline void CCL_BRTS8_X86_FindRuns(const unsigned int* bits_start, int height, i
 	const unsigned int* bits = bits_start;
 	const unsigned int* bit_final = bits + data_width;
 	unsigned int working_bits = *bits;
-	unsigned int working_bits_r = ~working_bits;
 	unsigned long basepos = 0, bitpos = 0;
 	for (;; runs++) {
 		//find starting position
-		working_bits &= 0xFFFFFFFF << bitpos;
 		while (!_BitScanForward(&bitpos, working_bits)) {
 			bits++, basepos += 32;
 			if (bits >= bit_final) {
@@ -37,22 +35,21 @@ inline void CCL_BRTS8_X86_FindRuns(const unsigned int* bits_start, int height, i
 				goto out;
 			}
 			working_bits = *bits;
-			working_bits_r = ~working_bits;
 		}
 		runs->start_pos = short(basepos + bitpos);
 
 		//find ending position
-		working_bits_r &= 0xFFFFFFFF << bitpos;
-		while (!_BitScanForward(&bitpos, working_bits_r)) {
+		working_bits = (~working_bits) & (0xFFFFFFFF << bitpos);
+		while (!_BitScanForward(&bitpos, working_bits)) {
 			bits++, basepos += 32;
 			if (bits == bit_final) {
 				working_bits = 0;
 				bitpos = 0;
 				break;
 			}
-			working_bits = *bits;
-			working_bits_r = ~working_bits;
+			working_bits = ~(*bits);
 		}
+		working_bits = (~working_bits) & (0xFFFFFFFF << bitpos);
 		runs->end_pos = short(basepos + bitpos);
 		runs->label = labelsolver.NewLabel();
 	}
@@ -64,11 +61,9 @@ out:
 		const unsigned int* bits = bits_start + data_width * row;
 		const unsigned int* bit_final = bits + data_width;
 		unsigned int working_bits = *bits;
-		unsigned int working_bits_r = ~working_bits;
 		unsigned long basepos = 0, bitpos = 0;
 		for (;; runs++) {
 			//find starting position
-			working_bits &= 0xFFFFFFFF << bitpos;
 			while (!_BitScanForward(&bitpos, working_bits)) {
 				bits++, basepos += 32;
 				if (bits >= bit_final) {
@@ -78,22 +73,21 @@ out:
 					goto out2;
 				}
 				working_bits = *bits;
-				working_bits_r = ~working_bits;
 			}
 			unsigned short start_pos = short(basepos + bitpos);
 
 			//find ending position
-			working_bits_r &= 0xFFFFFFFF << bitpos;
-			while (!_BitScanForward(&bitpos, working_bits_r)) {
+			working_bits = (~working_bits) & (0xFFFFFFFF << bitpos);
+			while (!_BitScanForward(&bitpos, working_bits)) {
 				bits++, basepos += 32;
 				if (bits == bit_final) {
 					working_bits = 0;
 					bitpos = 0;
 					break;
 				}
-				working_bits = *bits;
-				working_bits_r = ~working_bits;
+				working_bits = ~(*bits);
 			}
+			working_bits = (~working_bits) & (0xFFFFFFFF << bitpos);
 			unsigned short end_pos = short(basepos + bitpos);
 
 			//Skip upper runs end before this run starts
