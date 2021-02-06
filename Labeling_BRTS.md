@@ -1,4 +1,4 @@
-# Bit-Run Three Scan (BRTS)
+# Bit-Run Two Scan (BRTS)
 
 Bit-Run Two Scan (BRTS) algorithm is not completely new. It's more like a special optimization of Run-Based Two-Scan (RBTS) algorithm found by Lifeng He, Yuyan Chao and Kenji Suzuki. It shares many basic idea of RBTS. This document doesn't deal with the RBTS algorithm in detail. If you want to know about their approach first, refer their official [paper](https://ieeexplore.ieee.org/document/4472694).
 
