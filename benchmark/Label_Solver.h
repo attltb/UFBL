@@ -1,7 +1,5 @@
-#ifndef HEADER_COMMON
-#define HEADER_COMMON
-#define _CRT_SECURE_NO_WARNINGS
-using namespace std;
+#ifndef HEADER_LABELSOLVER
+#define HEADER_LABELSOLVER
 
 // Union-Find (UF) with path compression (PC) as in:
 // Two Strategies to Speed up Connected Component Labeling Algorithms
@@ -80,42 +78,4 @@ private:
     unsigned length_;
 };
 
-struct Data {
-	unsigned int** data;
-    unsigned int* raw;
-    int height;
-    int width;
-	
-	Data() : height(0), width(0), data(nullptr), raw(nullptr) {}
-	Data(int _height, int _width) : height(_height), width(_width) {
-		raw = new unsigned int[_height * _width];
-		data = new unsigned int* [_height];
-		for (int i = 0; i < _height; i++) data[i] = raw + i * width;
-	}
-	~Data() {
-		if (!raw) return;
-		delete[] raw;
-		delete[] data;
-	}
-};
-struct Data_Compressed {
-    unsigned int* bits;
-    int data_width;
-    int height;
-    int width;
-    unsigned int* operator [](int row) {
-        return bits + data_width * row;
-    }
-    const unsigned int* operator [] (int row) const {
-        return bits + data_width * row;
-    }
-    Data_Compressed(int _height, int _width) : height(_height), width(_width) {
-        data_width = _width / 32 + 1;
-        if (height) bits = new unsigned int[height * data_width];
-        else bits = nullptr;
-    }
-    ~Data_Compressed() {
-        if (bits) delete[] bits;
-    }
-};
 #endif

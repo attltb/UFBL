@@ -1,4 +1,4 @@
-#include "Common.h"
+#include "Label_Solver.h"
 struct Run {
 	unsigned short start_pos;
 	unsigned short end_pos;
@@ -9,15 +9,16 @@ struct Runs {
 	unsigned height;
 	unsigned width;
 	Runs(unsigned _height, unsigned _width) : height(_height), width(_width) {
-		runs = new Run[height * (width / 2 + 2) + 1];
+		runs = new Run[height * ((size_t)width / 2 + 2) + 1];
 	};
 	~Runs() {
 		delete[] runs;
 	}
 };
-inline void CCL_RBTS8_X86_FindRuns(const unsigned int* pdata, int height, int width, Run* runs, UFPC& labelsolver) {
+inline void CCL_RBTS4_FindRuns(const unsigned int* pdata, int height, int width, Run* runs, UFPC& labelsolver) {
 	Run* runs_up = runs;
 
+	//process runs in the first row
 	for (int i = 0;; runs++) {
 		//find starting position
 		for (;; i++) {
@@ -66,10 +67,10 @@ out:
 			i++;
 
 			//Skip upper runs end before this run starts
-			for (; runs_up->end_pos < start_pos; runs_up++);
+			for (; runs_up->end_pos <= start_pos; runs_up++);
 
 			//No upper run meets this
-			if (runs_up->start_pos > end_pos) {
+			if (runs_up->start_pos >= end_pos) {
 				runs->start_pos = start_pos;
 				runs->end_pos = end_pos;
 				runs->label = labelsolver.NewLabel();
@@ -79,7 +80,7 @@ out:
 			unsigned label = labelsolver.GetLabel(runs_up->label);
 
 			//Next upper run can not meet this
-			if (end_pos <= runs_up->end_pos) {
+			if (end_pos - 1 <= runs_up->end_pos) {
 				runs->start_pos = start_pos;
 				runs->end_pos = end_pos;
 				runs->label = label;
@@ -88,10 +89,10 @@ out:
 
 			//Find next upper runs meet this
 			runs_up++;
-			for (; runs_up->start_pos <= end_pos; runs_up++) {
+			for (; runs_up->start_pos < end_pos; runs_up++) {
 				unsigned label_other = labelsolver.GetLabel(runs_up->label);
 				if (label != label_other) label = labelsolver.Merge(label, label_other);
-				if (end_pos <= runs_up->end_pos) break;
+				if (end_pos - 1 <= runs_up->end_pos) break;
 			}
 			runs->start_pos = start_pos;
 			runs->end_pos = end_pos;
@@ -103,23 +104,19 @@ out:
 	}
 	labelsolver.Flatten();
 }
-
-void run_based_algorithm_8c(const Data& data, Data& data_labels) {
-	int height = data.height;
-	int width = data.width;
-
+void Labeling_RBTS4(unsigned* dest, const unsigned int* source, int height, int width) {
 	//find runs
 	UFPC labelsolver;
 	labelsolver.Alloc((size_t)((height + 1) / 2) * (size_t)((width + 1) / 2) + 1);
 	labelsolver.Setup();
 	Runs Data_run(height, width);
-	CCL_RBTS8_X86_FindRuns(data.raw, height, width, Data_run.runs, labelsolver);
+	CCL_RBTS4_FindRuns(source, height, width, Data_run.runs, labelsolver);
 
 	//generate label data
 	Run* runs = Data_run.runs;
-	for (int i = 0; i < height; i++) {
-		unsigned int* labels = data_labels.data[i];
-		for (int j = 0;; runs++) {
+	for (size_t i = 0; i < height; i++) {
+		unsigned* labels = dest + width * i;
+		for (size_t j = 0;; runs++) {
 			unsigned short start_pos = runs->start_pos;
 			if (start_pos == 0xFFFF) {
 				for (; j < width; j++) labels[j] = 0;
@@ -134,4 +131,4 @@ void run_based_algorithm_8c(const Data& data, Data& data_labels) {
 	}
 
 	labelsolver.Dealloc();
-};
+}

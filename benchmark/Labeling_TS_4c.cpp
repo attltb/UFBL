@@ -1,10 +1,8 @@
-#include "Common.h"
-inline void CCL_TP4_FirstPass(Data& data_labels, UFPC& labelsolver) {
-	int height = data_labels.height;
-	int width = data_labels.width;
+#include "Label_Solver.h"
+inline void CCL_TS4_FirstPass(unsigned* dest, int height, int width, UFPC& labelsolver) {
 	if (width == 0 || height == 0) return;
 
-	unsigned int* labels = data_labels.data[0];
+	unsigned int* labels = dest;
 	if (labels[0]) labels[0] = labelsolver.NewLabel();
 	for (int j = 1; j < width; j++) {
 		if (!labels[j]) continue;
@@ -13,8 +11,8 @@ inline void CCL_TP4_FirstPass(Data& data_labels, UFPC& labelsolver) {
 	}
 
 	for (int row = 1; row < height; row++) {
-		unsigned int* labels = data_labels.data[row];
-		unsigned int* labels_up = data_labels.data[row - 1];
+		unsigned int* labels = dest + (size_t)row * width;
+		unsigned int* labels_up = dest + ((size_t)row - 1) * width;
 		if (labels[0]) {
 			if (labels_up[0]) labels[0] = labels_up[0];
 			else labels[0] = labelsolver.NewLabel();
@@ -36,14 +34,11 @@ inline void CCL_TP4_FirstPass(Data& data_labels, UFPC& labelsolver) {
 	}
 	labelsolver.Flatten();
 }
-void two_pass_algorithm(const Data& data, Data& data_labels) {
-	int height = data.height;
-	int width = data.width;
-
+void Labeling_TS4(unsigned* dest, const unsigned int* source, int height, int width) {
 	//initialize label state
 	for (int i = 0; i < height; i++) {
-		const unsigned int* datas = data.data[i];
-		unsigned int* labels = data_labels.data[i];
+		const unsigned int* datas = source + (size_t)i * width;
+		unsigned int* labels = dest + (size_t)i * width;
 		for (int j = 0; j < width; j++) {
 			if (datas[j]) labels[j] = 1;
 			else labels[j] = 0;
@@ -54,11 +49,11 @@ void two_pass_algorithm(const Data& data, Data& data_labels) {
 	UFPC labelsolver;
 	labelsolver.Alloc((size_t)((height + 1) / 2) * (size_t)((width + 1) / 2) + 1);
 	labelsolver.Setup();
-	CCL_TP4_FirstPass(data_labels, labelsolver);
+	CCL_TS4_FirstPass(dest, height, width, labelsolver);
 
 	//second pass
 	for (int i = 0; i < height; i++) {
-		unsigned int* labels = data_labels.data[i];
+		unsigned int* labels = dest + (size_t)i * width;
 		for (int j = 0; j < width; j++) {
 			if (labels[j]) labels[j] = labelsolver.GetLabel(labels[j]);
 		}

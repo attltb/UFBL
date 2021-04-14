@@ -10,9 +10,9 @@ Using 1-bit per pixel format on binary data not only saves memory, but also allo
 
 ## How to use
 
-UFBL contains two algorithms named Bit-Run Two Scan (BRTS) and Bit-Merge-Run Scan (BMRS). Each algorithms only requires one source file, one header file, and a common header named *label_solver.h*. The common header contains code for a data structure named Union-Find with path compression (UFPC) label solver which is developed by Kesheng Wu, Ekow Otoo and Kenji Suzuki.
+UFBL contains two algorithms named Bit-Run Two Scan (BRTS) and Bit-Merge-Run Scan (BMRS). Each algorithms requires one source file, one header file, and common headers named *Formats.h*, *label_solver.h*. The last one contains code for a data structure named Union-Find with path compression (UFPC) label solver which is developed by Kesheng Wu, Ekow Otoo and Kenji Suzuki. Algorithms for x86, x64 processor also require *Format_changer_X86.h*, *Format_changer_X64.h* respectively. 
 
-BRTS supports both 4-connectivity and 8-connectivity, while BMRS only supports 8-connectivity. Since each algorithms has two versions which work on x86 processor and x64 processor, total 6 version of UFBL algorithm are available.
+BRTS supports both 4-connectivity and 8-connectivity, while BMRS only supports 8-connectivity. Since each algorithms has two versions which work on x86 processor and x64 processor, total 6 version of UFBL algorithm are available. 
 
 <table>
   <tr>
@@ -58,19 +58,37 @@ BRTS supports both 4-connectivity and 8-connectivity, while BMRS only supports 8
     <td align="center"><i>Labeling_BMRS_8c_x64.h</i>, <i>Labeling_BMRS_8c_x64.cpp</i></td>
   </tr>
 </table>
-To use BMRS algorithm in your 64-bit program, for example, you only have to include *Labeling_BMRS_8c_x64.h*, *Labeling_BMRS_8c_x64.cpp* and *label_solver.h*  in your project. The converting function is declared in *Labeling_BMRS_8c_x64.h*. 
+To use BMRS algorithm in your 64-bit program, for example, you only have to include *Labeling_BMRS_8c_x64.h*, *Labeling_BMRS_8c_x64.cpp*, *Formats.h*, *Format_changer_X64.h* and *label_solver.h*  in your project. The converting function is declared in *Labeling_BMRS_8c_x64.h*. 
 
 ```C++
-void Labeling_BMRS_X64(unsigned* dest, const void* source, int height, int width, int alignment = 8);
+void Labeling_BMRS_X64(unsigned* dest, const void* source, int height, int width
+                       , int data_width = 0, int fmbits = BTCPR_FM_ALIGN_8 | BTCPR_FM_PADDING_ZERO);
 ```
 
-`dest` must be a pointer to an array buffer of size of the numer of pixels in which the labels will be generated. `source` must be a pointer to the input data which saves 2D binary image in 1-bit per pixel format. Each rows can contain padding bits at the end to make every rows aligned in memory. The alignment must be same with `alignment` argument send to the function. Usually 4-byte alignment is recommended for x86 functions, and 8-byte alignment is recommended for x64 functions.
+`dest` must be a pointer to an array buffer of size of the numer of pixels in which the labels will be generated. `source` must be a pointer to the input data which saves 2D binary image in 1-bit per pixel format. The fifth parameter `data_width` represents byte distance between starting address of `n`-th row and of `n+1`-th row. If this argument is zero, the distance will be assumed according to the width of the image and the alignment option passed as the last argument.
+
+The last argument is a combination of flag bits which are to specify the format of the input data. The flags used with this parameter are defined in *Formats.h*. See following table for the names, meaning, and values of the flags.
+
+| Name                  | Meaning                                                      | Value      |
+| --------------------- | ------------------------------------------------------------ | ---------- |
+| BTCPR_FM_ALIGN_1      | Rows are aligned at byte boundary. Padding bits are inserted if the width of the image is not a multiple of 8. Ignored if `data_width` is nonzero. | 0x00000001 |
+| BTCPR_FM_ALIGN_2      | Rows are aligned at word boundary. Padding bits are inserted if the width of the image is not a multiple of 16. Ignored if `data_width` is nonzero. | 0x00000002 |
+| BTCPR_FM_ALIGN_4      | Rows are aligned at double word boundary. Padding bits are inserted if the width of the image is not a multiple of 32. Ignored if `data_width` is nonzero. | 0x00000004 |
+| BTCPR_FM_ALIGN_8      | Rows are aligned at quadruple word boundary. Padding bits are inserted if the width of the image is not a multiple of 64. Ignored if `data_width` is nonzero. | 0x00000008 |
+| BTCPR_FM_NO_ALIGN     | There is no padding bit between rows. Ignored if `data_width` is nonzero. | 0x00000000 |
+| BTCPR_FM_B1W0         | Bit 1 is black and 0 is white. Default is the other way round. This flag can also be used to perform CCL on black area of image, instead of usual white one. (If the source image does not use 0 as black. If it does, one can perform CCL on black area by *not* setting this flag.) | 0x80000000 |
+| BTCPR_FM_MSB_FIRST    | Bits in a byte are saved in most-significant-bit to least-significant-bit order so that it is consistent with the binary number notation. Default is the other way round. | 0x40000000 |
+| BTCPR_FM_PADDING_MSB  | Padding bits are at the most-significant area of the last byte. If the last bits are 1,0,0,1, the last byte will be 0b1001, instead of 0b10010000. Ignored if `BTCPR_FM_MSB_FIRST` is not setted. | 0x20000000 |
+| BTCPR_FM_PADDING_ZERO | Padding bits are filled with zero. If this flag is not setted, the padding bits can be filled with garbage bits. Ignored if the source data does not have padding bits. | 0x10000000 |
+
+If user can choose which format to use, format `BTCPR_FM_ALIGN_8 | BTCPR_FM_PADDING_ZERO` is recommanded for x64 algorithms and format `BTCPR_FM_ALIGN_4 | BTCPR_FM_PADDING_ZERO` is recommanded for x86 algorithms. If the input data does not have this format, UFBL creates new data which are equivalent to the original but uses different format and perform main algorithm on the new data. The format change algorithm is fast and effective. It takes less than 2% of the total excution time. 
+
 
 
 
 ## Benchmark
 
-UFBL is a project which orients fast execution speed. One may want to know how fast each of the algorithms work. Files in [benchmark/](benchmark) folder do not need to run UFBL algorithm. It allows one to test each UFBL algorithms in his system. 
+UFBL is a project which orients fast execution speed. One may want to know how fast each of the algorithms work. Files in [benchmark/](benchmark) folder do not need to run UFBL algorithm. It's just a simple sample program using UFBL library of which purpose is at the correctness, performance test of each CCL algorithms.
 
  ![tst](doc/tst.png)
 
@@ -78,7 +96,7 @@ The benchmark program includes 5 different algorithm. The old [two-pass](https:/
 
 If there are no command line arguments, it makes a random 640 x 480 data, processes them using many CCL algorithms multiple times, and shows the execution time used for each. All algorithms except UFBL ones work on the original 4-byte per pixel format, while UFBL algorithms work on its compressed version which has 1-bit per pixel format.
 
-If 24-bit bitmap files are given as arguments, it does the same test on the input images. It also exports the result as another .bmp files. Each labels has distinguishable bright colors so one can easily check if the algorithm works correctly or not. 
+If 24-bit bitmap files and p4 pbm file are given as arguments, it does the same test on the input images. It also exports the result as another .bmp files. Each labels has distinguishable bright colors so one can easily check if the algorithm works correctly or not. 
 
 
 

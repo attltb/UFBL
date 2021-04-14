@@ -4,7 +4,7 @@ Bit-Run Two Scan (BRTS) algorithm is not completely new. It's more like a specia
 
 BRTS is consist of two steps. First, it finds every linear chunks 1 in every scan-lines and generate metadata about their starting position and ending position and label. These linear chunks will be simply called by *Run*, the word introduced by the three authors mentioned above. 
 
-For the first row, every runs get different labels. For each run in rest rows, it checks if there are upper runs which are connected to it first. If no upper runs are connected to it, it gets new label. If only one upper run is connected to it, it gets the copy of the label. If many upper runs are connected to it, those labels are merged and it gets the merged one. 
+For the first row, every runs get different labels. For each run in rest rows, it checks if there are upper runs which are connected to it first. If no upper runs are connected to it, it gets new label. If only one upper runs are connected to it, it gets the copy of the label. If many upper runs are connected to it, those labels are merged and it gets the merged one. 
 
 After the second step, one gets metadata on runs which saves their starting point, ending point and labels. Generating label map from these metadata is straightforward. This consist the last step. Each steps will be explained with code in the following section.
 
@@ -39,7 +39,7 @@ for (;; runs++) {
 		bits++, basepos += 64;
 		if (bits == bit_final) {
 			bitpos = 0;
-			working_bits = 0;
+			working_bits = 0xFFFFFFFF;
 			break;
 		}
 		working_bits = ~(*bits);
@@ -103,7 +103,7 @@ runs_up = runs_save;
 
 The variable `runs_up` points the run metadatas of the upper scanline, which is processed before working scanline. The first line should be treated differently since it does not have upper scanline. For the first row, every runs get different labels. The code above shows the run-generating code for the rest rows. 
 
-The code checks if there are upper runs which are connected to it first. If no upper runs are connected to it, it gets new label. If only one upper run is connected to it, it gets the copy of the label. If many upper runs are connected to it, those labels are merged and it gets the merged one. 
+The code checks if there are upper runs which are connected to it first. If no upper runs are connected to it, it gets new label. If only one upper runs are connected to it, it gets the copy of the label. If many upper runs are connected to it, those labels are merged and it gets the merged one. 
 
 Note that unlike BRTS, the original RBTS algorithm writes labels directly into the 2D label map (the output). It writes every pixels consist a run even if the run is very long and the label might turned out to be wrong and have to be modified later. This is just waste of time. Saving the label on run metadata makes the whole algorithm much faster.
 
