@@ -11,8 +11,8 @@ inline void CCL_TS8_FirstPass(unsigned* dest, int height, int width, UFPC& label
 	}
 
 	for (int row = 1; row < height; row++) {
-		unsigned int* labels = dest + (size_t)row * width;
-		unsigned int* labels_up = dest + ((size_t)row - 1) * width;
+		unsigned int* labels = dest + row * width;
+		unsigned int* labels_up = dest + (row - 1) * width;
 
 		if (width == 1) {
 			if (labels[0]) {
@@ -78,8 +78,8 @@ inline void CCL_TS8_FirstPass(unsigned* dest, int height, int width, UFPC& label
 void Labeling_TS8(unsigned* dest, const unsigned int* source, int height, int width) {
 	//initialize label state
 	for (int i = 0; i < height; i++) {
-		const unsigned int* datas = source + (size_t)i * width;
-		unsigned int* labels = dest + (size_t)i * width;
+		const unsigned int* datas = source + i * width;
+		unsigned int* labels = dest + i * width;
 		for (int j = 0; j < width; j++) {
 			if (datas[j]) labels[j] = 1;
 			else labels[j] = 0;
@@ -88,13 +88,13 @@ void Labeling_TS8(unsigned* dest, const unsigned int* source, int height, int wi
 
 	//first pass
 	UFPC labelsolver;
-	labelsolver.Alloc((size_t)((height + 1) / 2) * (size_t)((width + 1) / 2) + 1);
+	labelsolver.Alloc(((height + 1) / 2) * ((width + 1) / 2) + 1);
 	labelsolver.Setup();
 	CCL_TS8_FirstPass(dest, height, width, labelsolver);
 
 	//second pass
 	for (int i = 0; i < height; i++) {
-		unsigned int* labels = dest + (size_t)i * width;
+		unsigned int* labels = dest + i * width;
 		for (int j = 0; j < width; j++) {
 			if (labels[j]) labels[j] = labelsolver.GetLabel(labels[j]);
 		}

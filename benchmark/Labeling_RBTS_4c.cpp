@@ -9,7 +9,7 @@ struct Runs {
 	unsigned height;
 	unsigned width;
 	Runs(unsigned _height, unsigned _width) : height(_height), width(_width) {
-		runs = new Run[height * ((size_t)width / 2 + 2) + 1];
+		runs = new Run[height * (width / 2 + 2) + 1];
 	};
 	~Runs() {
 		delete[] runs;
@@ -42,7 +42,7 @@ inline void CCL_RBTS4_FindRuns(const unsigned int* pdata, int height, int width,
 out:
 
 	//process runs in the rests
-	for (size_t row = 1; row < (size_t)height; row++) {
+	for (int row = 1; row < height; row++) {
 		Run* runs_save = runs;
 		pdata += width;
 		for (int i = 0;; runs++) {
@@ -107,16 +107,16 @@ out:
 void Labeling_RBTS4(unsigned* dest, const unsigned int* source, int height, int width) {
 	//find runs
 	UFPC labelsolver;
-	labelsolver.Alloc((size_t)((height + 1) / 2) * (size_t)((width + 1) / 2) + 1);
+	labelsolver.Alloc(((height + 1) / 2) * ((width + 1) / 2) + 1);
 	labelsolver.Setup();
 	Runs Data_run(height, width);
 	CCL_RBTS4_FindRuns(source, height, width, Data_run.runs, labelsolver);
 
 	//generate label data
 	Run* runs = Data_run.runs;
-	for (size_t i = 0; i < height; i++) {
+	for (int i = 0; i < height; i++) {
 		unsigned* labels = dest + width * i;
-		for (size_t j = 0;; runs++) {
+		for (int j = 0;; runs++) {
 			unsigned short start_pos = runs->start_pos;
 			if (start_pos == 0xFFFF) {
 				for (; j < width; j++) labels[j] = 0;

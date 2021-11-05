@@ -14,9 +14,9 @@ char GetLabel(unsigned label) {
 	return '?';
 }
 void PrintLabel(const unsigned int* labels, int height, int width, bool space) {
-	for (size_t i = 0; i < height; i++) {
+	for (int i = 0; i < height; i++) {
 		const unsigned int* labels_row = labels + i * width;
-		for (size_t j = 0; j < width; j++) {
+		for (int j = 0; j < width; j++) {
 			if (space && !(j % 8)) printf(" ");
 			printf("%c", GetLabel(labels_row[j]));
 		}
@@ -35,31 +35,31 @@ void PrintData(const unsigned int* source, int height, int width, bool space) {
 	}
 	cout << endl;
 }
-void PrintCompressedBits_X86(unsigned long bits, bool space) {
+void PrintCompressedBits_X86(uint32_t bits, bool space) {
 	for (int i = 0; i < 32; i++) {
 		if (space && !(i % 8)) cout << ' ';
-		if (bits & ((unsigned long)1 << i)) cout << '1';
+		if (bits & ((uint32_t)1 << i)) cout << '1';
 		else cout << '0';
 	}
 }
-void PrintCompressedBits_X64(unsigned long long bits, bool space) {
+void PrintCompressedBits_X64(uint64_t bits, bool space) {
 	for (int i = 0; i < 64; i++) {
 		if (space && !(i % 8)) cout << ' ';
-		if (bits & ((unsigned long long)1 << i)) cout << '1';
+		if (bits & ((uint64_t)1 << i)) cout << '1';
 		else cout << '0';
 	}
 }
-void PrintCompressedBits_on_MsbFirst_X86(unsigned long bits, bool space) {
+void PrintCompressedBits_on_MsbFirst_X86(uint32_t bits, bool space) {
 	for (int i = 0; i < 32; i++) {
 		if (space && !(i % 8)) cout << ' ';
-		if (bits & ((unsigned long)1 << (31 - i))) cout << '1';
+		if (bits & ((uint32_t)1 << (31 - i))) cout << '1';
 		else cout << '0';
 	}
 }
-void PrintCompressedBits_on_MsbFirst_X64(unsigned long long bits, bool space) {
+void PrintCompressedBits_on_MsbFirst_X64(uint64_t bits, bool space) {
 	for (int i = 0; i < 64; i++) {
 		if (space && !(i % 8)) cout << ' ';
-		if (bits & ((unsigned long long)1 << (31 - i))) cout << '1';
+		if (bits & ((uint64_t)1 << (31 - i))) cout << '1';
 		else cout << '0';
 	}
 }

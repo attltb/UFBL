@@ -1,7 +1,7 @@
 #include "Label_Solver.h"
+#include "BitScanner.h"
 #include "Formats.h"
 #include "Format_changer_X64.h"
-#include <intrin.h>
 struct Run {
 	unsigned short start_pos;
 	unsigned short end_pos;
@@ -12,23 +12,23 @@ struct Runs {
 	unsigned height;
 	unsigned width;
 	Runs(unsigned _height, unsigned _width) : height(_height), width(_width) {
-		runs = new Run[height * ((size_t)width / 2 + 2) + 1];
+		runs = new Run[height * (width / 2 + 2) + 1];
 	};
 	~Runs() {
 		delete[] runs;
 	}
 };
-inline void CCL_BRTS8_X64_FindRuns(const unsigned long long* bits_start, int height, int width, int qword_width, Run* runs, UFPC& labelsolver) {
+inline void CCL_BRTS8_X64_FindRuns(const uint64_t* bits_start, int height, int width, int qword_width, Run* runs, UFPC& labelsolver) {
 	Run* runs_up = runs;
 
 	//process runs in the first row
-	const unsigned long long* bits = bits_start;
-	const unsigned long long* bit_final = bits + width / 64 + (width % 64 != 0);
-	unsigned long long working_bits = *bits;
+	const uint64_t* bits = bits_start;
+	const uint64_t* bit_final = bits + width / 64 + (width % 64 != 0);
+	uint64_t working_bits = *bits;
 	unsigned long basepos = 0, bitpos = 0;
 	for (;; runs++) {
 		//find starting position
-		while (!_BitScanForward64(&bitpos, working_bits)) {
+		while (!myBitScanForward64(&bitpos, working_bits)) {
 			bits++, basepos += 64;
 			if (bits >= bit_final) {
 				runs->start_pos = (short)0xFFFF;
@@ -42,7 +42,7 @@ inline void CCL_BRTS8_X64_FindRuns(const unsigned long long* bits_start, int hei
 
 		//find ending position
 		working_bits = (~working_bits) & (0xFFFFFFFFFFFFFFFF << bitpos);
-		while (!_BitScanForward64(&bitpos, working_bits)) {
+		while (!myBitScanForward64(&bitpos, working_bits)) {
 			bits++, basepos += 64;
 			if (bits == bit_final) {
 				bitpos = 0;
@@ -58,15 +58,15 @@ inline void CCL_BRTS8_X64_FindRuns(const unsigned long long* bits_start, int hei
 out:
 
 	//process runs in the rests
-	for (size_t row = 1; row < height; row++) {
+	for (int row = 1; row < height; row++) {
 		Run* runs_save = runs;
-		const unsigned long long* bits = bits_start + qword_width * row;
-		const unsigned long long* bit_final = bits + width / 64 + (width % 64 != 0);
-		unsigned long long working_bits = *bits;
+		const uint64_t* bits = bits_start + qword_width * row;
+		const uint64_t* bit_final = bits + width / 64 + (width % 64 != 0);
+		uint64_t working_bits = *bits;
 		unsigned long basepos = 0, bitpos = 0;
 		for (;; runs++) {
 			//find starting position
-			while (!_BitScanForward64(&bitpos, working_bits)) {
+			while (!myBitScanForward64(&bitpos, working_bits)) {
 				bits++, basepos += 64;
 				if (bits >= bit_final) {
 					runs->start_pos = (short)0xFFFF;
@@ -80,7 +80,7 @@ out:
 
 			//find ending position
 			working_bits = (~working_bits) & (0xFFFFFFFFFFFFFFFF << bitpos);
-			while (!_BitScanForward64(&bitpos, working_bits)) {
+			while (!myBitScanForward64(&bitpos, working_bits)) {
 				bits++, basepos += 64;
 				if (bits == bit_final) {
 					bitpos = 0;
@@ -132,15 +132,15 @@ out:
 }
 
 void Labeling_BRTS8_X64_on_MSB_First(unsigned* dest, const void* source, int height, int width, int data_width, int fmbits) {
-	std::pair<const unsigned long long*, std::pair<int, int>> format_new = CCL_Format_Change_and_Bswap_X64(source, height, width, data_width, fmbits);
+	std::pair<const uint64_t*, std::pair<int, int>> format_new = CCL_Format_Change_and_Bswap_X64(source, height, width, data_width, fmbits);
 
-	const unsigned long long* bits = format_new.first;
+	const uint64_t* bits = format_new.first;
 	int qword_width = format_new.second.first;
 	int base_r = format_new.second.second;
 
 	//find runs
 	UFPC labelsolver;
-	labelsolver.Alloc((size_t)((height + 1) / 2) * (size_t)((width + 1) / 2) + 1);
+	labelsolver.Alloc(((height + 1) / 2) * ((width + 1) / 2) + 1);
 	labelsolver.Setup();
 	Runs Data_run(height, width);
 	CCL_BRTS8_X64_FindRuns(bits, height, base_r, qword_width, Data_run.runs, labelsolver);
@@ -148,7 +148,7 @@ void Labeling_BRTS8_X64_on_MSB_First(unsigned* dest, const void* source, int hei
 	//generate label data
 	Run* runs = Data_run.runs;
 	for (int i = 0; i < height; i++) {
-		unsigned* labels = dest + (size_t)width * i;
+		unsigned* labels = dest + width * i;
 		for (int j = width - 1;; runs++) {
 			unsigned short start_pos = base_r - runs->start_pos;
 			if (runs->start_pos == 0xFFFF) {
@@ -168,23 +168,23 @@ void Labeling_BRTS8_X64_on_MSB_First(unsigned* dest, const void* source, int hei
 }
 void Labeling_BRTS8_X64(unsigned* dest, const void* source, int height, int width, int data_width, int fmbits) {
 	if (fmbits & BTCPR_FM_MSB_FIRST) return Labeling_BRTS8_X64_on_MSB_First(dest, source, height, width, data_width, fmbits);
-	std::pair<const unsigned long long*, int> format_new = CCL_Format_Change_X64(source, height, width, data_width, fmbits);
+	std::pair<const uint64_t*, int> format_new = CCL_Format_Change_X64(source, height, width, data_width, fmbits);
 
-	const unsigned long long* bits = format_new.first;
+	const uint64_t* bits = format_new.first;
 	int qword_width = format_new.second;
 
 	//find runs
 	UFPC labelsolver;
-	labelsolver.Alloc((size_t)((height + 1) / 2) * (size_t)((width + 1) / 2) + 1);
+	labelsolver.Alloc(((height + 1) / 2) * ((width + 1) / 2) + 1);
 	labelsolver.Setup();
 	Runs Data_run(height, width);
 	CCL_BRTS8_X64_FindRuns(bits, height, width, qword_width, Data_run.runs, labelsolver);
 
 	//generate label data
 	Run* runs = Data_run.runs;
-	for (size_t i = 0; i < height; i++) {
-		unsigned* labels = dest + (size_t)width * i;
-		for (size_t j = 0;; runs++) {
+	for (int i = 0; i < height; i++) {
+		unsigned* labels = dest + width * i;
+		for (int j = 0;; runs++) {
 			unsigned short start_pos = runs->start_pos;
 			if (start_pos == 0xFFFF) {
 				for (; j < width; j++) labels[j] = 0;

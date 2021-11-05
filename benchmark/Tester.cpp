@@ -17,7 +17,7 @@ bool LabelMap::is_equiv(LabelMap other) {
 		if (label_max < labels[i]) label_max = labels[i];
 	}
 
-	unsigned int* label_map = new unsigned int[(size_t)label_max + 1];
+	unsigned int* label_map = new unsigned int[label_max + 1];
 	for (int i = 0; i < (int)label_max + 1; i++) label_map[i] = 0;
 	for (int i = 0; i < size; i++) {
 		unsigned int label_l = labels[i];
@@ -35,7 +35,7 @@ bool LabelMap::export_as(const char* filename) {
 	//save labels as .bmp(24bit) file
 
 	unsigned int color_rander = (unsigned int)rand();
-	size_t size = (size_t)height * width;
+	int size = height * width;
 	tagRGBQUAD* buffer_raw32 = new tagRGBQUAD[size];
 	for (int i = 0; i < height * width; i++) {
 		tagRGBQUAD color{ (BYTE)0, (BYTE)0, (BYTE)0, (BYTE)0 };
@@ -62,8 +62,8 @@ bool LabelMap::export_as(const char* filename) {
 	tagRGBQUAD* rbuffer = buffer_raw32;
 	BYTE* wbuffer = buffer_raw24;
 	for (int i = 0; i < height; i++) {
-		tagRGBQUAD* rbuffer = buffer_raw32 + (size_t)i * width;
-		BYTE* wbuffer = buffer_raw24 + ((size_t)height - 1 - i) * data_width;
+		tagRGBQUAD* rbuffer = buffer_raw32 + i * width;
+		BYTE* wbuffer = buffer_raw24 + (height - 1 - i) * data_width;
 		for (int j = 0; j < width; j++) {
 			((tagRGBTRIPLE*)wbuffer)->rgbtRed = rbuffer->rgbRed;
 			((tagRGBTRIPLE*)wbuffer)->rgbtGreen = rbuffer->rgbGreen;
@@ -118,9 +118,9 @@ bool LabelMap::export_as(const char* filename) {
 void Byte_Source::Initialize(Bit_Source& bit_source) {
 	height = bit_source.height;
 	width = bit_source.width;
-	data = new unsigned int[(size_t)height * width];
+	data = new unsigned int[height * width];
 	for (int y = 0; y < height; y++) {
-		unsigned int* m_dst = data + (size_t)y * width;
+		unsigned int* m_dst = data + y * width;
 		for (int x = 0; x < width; x++) {
 			m_dst[x] = GetBit(bit_source.data, height, width, bit_source.data_width, bit_source.fmbits, y, x);
 		}
@@ -129,8 +129,8 @@ void Byte_Source::Initialize(Bit_Source& bit_source) {
 void Byte_Source::Initialize_by_Rand(int _height, int _width) {
 	height = _height;
 	width = _width;
-	data = new unsigned int[(size_t)height * width];
-	for (size_t i = 0; i < height; i++) {
+	data = new unsigned int[height * width];
+	for (int i = 0; i < height; i++) {
 		unsigned int* prow = data + i * width;
 		for (int j = 0; j < width; j++) prow[j] = rand() % 2;
 	}
@@ -182,11 +182,11 @@ bool Byte_Source::Initialize_by_File(const char* filename) {
 	}
 	_close(fd);
 
-	data = new unsigned int[(size_t)height * width];
-	for (size_t i = 0; i < height; i++) {
+	data = new unsigned int[height * width];
+	for (int i = 0; i < height; i++) {
 		BYTE* rbuffer = buffer_raw24 + (height - 1 - i) * row_byte_width;
 		unsigned int* wbuffer = data + i * width;
-		for (size_t j = 0; j < width; j++) {
+		for (int j = 0; j < width; j++) {
 			tagRGBTRIPLE color = *((tagRGBTRIPLE*)rbuffer);
 			if (color.rgbtRed || color.rgbtGreen || color.rgbtBlue) *wbuffer = 1;
 			else *wbuffer = 0;
@@ -236,7 +236,7 @@ void Bit_Source::Initialize(Byte_Source& byte_source, int _data_width, int _fmbi
 			int size_byte_full = size / 8;
 			int size_rem = size % 8;
 			int size_byte = size_byte_full + (size_rem != 0);
-			unsigned char* data_compressed = new unsigned char[(size_t)size_byte];
+			unsigned char* data_compressed = new unsigned char[size_byte];
 			data = data_compressed;
 
 			const unsigned int* m_src = byte_source.data;
@@ -306,13 +306,13 @@ void Bit_Source::Initialize(Byte_Source& byte_source, int _data_width, int _fmbi
 
 	int width_byte_full = width / 8;
 	int width_rem = width % 8;
-	unsigned char* data_compressed = new unsigned char[(size_t)height * data_width];
+	unsigned char* data_compressed = new unsigned char[height * data_width];
 	unsigned char bits_mask_edge = (unsigned char)~(0xFF << (width % 8));
 	data = data_compressed;
 
 	for (int i = 0; i < height; i++) {
-		unsigned char* m_dst = data_compressed + (size_t)i * data_width;
-		const unsigned int* m_src = byte_source.data + (size_t)i * width;
+		unsigned char* m_dst = data_compressed + i * data_width;
+		const unsigned int* m_src = byte_source.data + i * width;
 
 		if (fmbits & BTCPR_FM_MSB_FIRST) {
 			for (int j = 0; j < width_byte_full; j++, m_src += 8) {
@@ -396,7 +396,7 @@ void Bit_Source::Initialize_by_Rand(int _height, int _width, int _data_width, in
 			int size_byte_full = size / 8;
 			int size_rem = size % 8;
 			int size_byte = size_byte_full + (size_rem != 0);
-			unsigned char* data_compressed = new unsigned char[(size_t)size_byte];
+			unsigned char* data_compressed = new unsigned char[size_byte];
 			data = data_compressed;
 
 			int size_int = size_byte / sizeof(int);
@@ -423,12 +423,12 @@ void Bit_Source::Initialize_by_Rand(int _height, int _width, int _data_width, in
 	int width_int_rem = data_width % sizeof(int);
 	int i_rem_start = width_int * sizeof(int);
 
-	unsigned char* data_compressed = new unsigned char[(size_t)height * data_width];
+	unsigned char* data_compressed = new unsigned char[height * data_width];
 	unsigned char bits_mask_edge = (unsigned char)~(0xFF << (width % 8));
 	data = data_compressed;
 
 	for (int i = 0; i < height; i++) {
-		unsigned char* m_dst = data_compressed + (size_t)i * data_width;
+		unsigned char* m_dst = data_compressed + i * data_width;
 		for (int i = 0; i < width_int; i++) ((int*)m_dst)[i] = rand();
 		if (width_int_rem) {
 			int rand_l = rand();
@@ -488,9 +488,9 @@ bool Bit_Source::Initialize_by_File(const char* filename) {
 		}
 
 		int data_width = width / 8 + (width % 8 != 0);
-		size_t size = (size_t)height * data_width;
+		int size = height * data_width;
 		data = new char[size];
-		if ((size_t)datasize - i < size) throw 3;
+		if (datasize - i < size) throw 3;
 		memcpy(data, filedata + i, size);
 	}
 	catch (...) {
@@ -504,12 +504,12 @@ bool Bit_Source::Initialize_by_File(const char* filename) {
 }
 
 LabelMap PerformLabeling(Byte_Algorithm byte_algorithm, Byte_Source& byte_source) {
-	unsigned int* labels = new unsigned int[(size_t)byte_source.height * byte_source.width];
+	unsigned int* labels = new unsigned int[byte_source.height * byte_source.width];
 	byte_algorithm(labels, byte_source.data, byte_source.height, byte_source.width);
 	return LabelMap(labels, byte_source.height, byte_source.width);
 }
 LabelMap PerformLabeling(Bit_Algorithm bit_algorithm, Bit_Source& bit_source) {
-	unsigned int* labels = new unsigned int[(size_t)bit_source.height * bit_source.width];
+	unsigned int* labels = new unsigned int[bit_source.height * bit_source.width];
 	bit_algorithm(labels, bit_source.data, bit_source.height, bit_source.width, bit_source.data_width, bit_source.fmbits);
 	return LabelMap(labels, bit_source.height, bit_source.width);
 }
@@ -525,28 +525,28 @@ bool Test_Correctness(Byte_Algorithm byte_algorithm, Byte_Source& byte_source, B
 	return result_1.is_equiv(result_2);
 }
 int Test_Performance(Byte_Algorithm byte_algorithm, Byte_Source& byte_source, int count) {
-	size_t label_count = (size_t)byte_source.height * byte_source.width;
+	int label_count = byte_source.height * byte_source.width;
 	unsigned int** label_result = new unsigned int* [count];
-	for (size_t i = 0; i < count; i++) label_result[i] = new unsigned int[label_count];
+	for (int i = 0; i < count; i++) label_result[i] = new unsigned int[label_count];
 
 	clock_t clock_st = clock();
-	for (size_t i = 0; i < count; i++) byte_algorithm(label_result[i], byte_source.data, byte_source.height, byte_source.width);
+	for (int i = 0; i < count; i++) byte_algorithm(label_result[i], byte_source.data, byte_source.height, byte_source.width);
 	clock_t clock_ed = clock();
 
-	for (size_t i = 0; i < count; i++) delete[] label_result[i];
+	for (int i = 0; i < count; i++) delete[] label_result[i];
 	delete[] label_result;
 	return clock_ed - clock_st;
 }
 int Test_Performance(Bit_Algorithm bit_algorithm, Bit_Source& bit_source, int count) {
-	size_t label_count = (size_t)bit_source.height * bit_source.width;
+	int label_count = bit_source.height * bit_source.width;
 	unsigned int** label_result = new unsigned int* [count];
-	for (size_t i = 0; i < count; i++) label_result[i] = new unsigned int[label_count];
+	for (int i = 0; i < count; i++) label_result[i] = new unsigned int[label_count];
 
 	clock_t clock_st = clock();
-	for (size_t i = 0; i < count; i++) bit_algorithm(label_result[i], bit_source.data, bit_source.height, bit_source.width, bit_source.data_width, bit_source.fmbits);
+	for (int i = 0; i < count; i++) bit_algorithm(label_result[i], bit_source.data, bit_source.height, bit_source.width, bit_source.data_width, bit_source.fmbits);
 	clock_t clock_ed = clock();
 
-	for (size_t i = 0; i < count; i++) delete[] label_result[i];
+	for (int i = 0; i < count; i++) delete[] label_result[i];
 	delete[] label_result;
 	return clock_ed - clock_st;
 }
