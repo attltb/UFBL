@@ -165,48 +165,44 @@ runs_up = runs_save;
 In BMRS, each runs represents a connected part of merged two scanline. To transform this information into 2D label map, it writes two scanlines at once. The variables `labels_u`, `labels_d` represents the two scanline in the following code. 
 
 ```C++
+memset(dest, 0, height * width * sizeof(unsigned));
+
 Run* runs = Data_run.runs;
-for (size_t i = 0; i < height / 2; i++) {
-	const char* data_u = (const char*)source + (size_t)row_bytes * 2 * i;
-	const char* data_d = data_u + row_bytes;
-	unsigned* labels_u = dest + (size_t)width * 2 * i;
+for (int i = 0; i < height / 2; i++) {
+	const uint64_t* const data_u = bits + qword_width_src * 2 * i;
+	const uint64_t* const data_d = data_u + qword_width_src;
+	unsigned* labels_u = dest + width * 2 * i;
 	unsigned* labels_d = labels_u + width;
 
-	for (size_t j = 0;; runs++) {
+	for (;; runs++) {
 		unsigned short start_pos = runs->start_pos;
 		if (start_pos == 0xFFFF) {
-			for (size_t k = j; k < width; k++) labels_u[k] = 0;
-			for (size_t k = j; k < width; k++) labels_d[k] = 0;
 			runs++;
 			break;
 		}
 		unsigned short end_pos = runs->end_pos;
 		unsigned label = labelsolver.GetLabel(runs->label);
-
-		for (; j < start_pos; j++) labels_u[j] = 0, labels_d[j] = 0;
-		for (; j < end_pos; j++) {
-			labels_u[j] = (data_u[j >> 3] & (1 << (j & 0x07))) ? label : 0;
-			labels_d[j] = (data_d[j >> 3] & (1 << (j & 0x07))) ? label : 0;
+		for (int j = start_pos; j < end_pos; j++) {
+			if (data_u[j >> 6] & (1ull << (j & 0x3F))) labels_u[j] = label;
+			if (data_d[j >> 6] & (1ull << (j & 0x3F))) labels_d[j] = label;
 		}
 	}
 }
 if (height % 2) {
 	unsigned* labels = dest + width * (height - (size_t)1);
-	for (size_t j = 0;; runs++) {
+	for (;; runs++) {
 		unsigned short start_pos = runs->start_pos;
 		if (start_pos == 0xFFFF) {
-			for (size_t k = j; k < width; k++) labels[k] = 0;
 			break;
 		}
 		unsigned short end_pos = runs->end_pos;
 		unsigned label = labelsolver.GetLabel(runs->label);
-		for (; j < start_pos; j++) labels[j] = 0;
-			for (j = start_pos; j < end_pos; j++) labels[j] = label;
+		for (int j = start_pos; j < end_pos; j++) labels[j] = label;
 	}
 }
 ```
 
-This second scan of BMRS is less efficient then of BRTS. It makes BMRS a bit slower than BRTS when the input data is simple. Instead, BMRS runs much faster when input image or data is complex. For most random images with 50% foreground density, BMRS beats every known CCL algorithms even when the original image is not in 1-bit per pixel format so it has to change the format first. 
+This second scan of BMRS is less efficient then of BRTS. It makes BMRS a bit slower than BRTS when the input data is simple. Instead, BMRS turns out to be more efficient when input image has fine granularity and high (more than 50%) foreground density. For most random images with 50% foreground density, BMRS with `BTCPR_FM_NO_ZEROINIT` option shows the best performance. 
 
 <table>
   <tr>
@@ -218,4 +214,4 @@ This second scan of BMRS is less efficient then of BRTS. It makes BMRS a bit slo
     <td align="center">Intel(R) Pentium(R) Gold G5420</td>
   </tr>
 </table>
-The benchmark result shows that BMRS is not just an algorithm specialized on 1-bit per pixel format, but a competitive CCL algorithm in general. See [YACCLAB/Results](YACCLAB/Results/) folder for the full results.
+Note that execution times for UFBL algorithms here include the time for 1 byte to 1 bit per pixel format conversion. They runs much faster if inputs are already in 1 bit per pixel format so that the conversion does not need. See [YACCLAB/Results](YACCLAB/Results/) folder for the full results.

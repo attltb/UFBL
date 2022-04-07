@@ -4,7 +4,7 @@ Connected-component labeling (CCL) , which distinguish objects in an image by as
 
 Unfortunately, all of known algorithms for CCL require at least 1-byte per pixel data as input. There is no CCL algorithm available which can be directly applied to 1-bit per pixel format, which is most natural for binary image or data.
 
-Using 1-bit per pixel format on binary data not only saves memory, but also allows processing for multiple pixels at once. It can be the best choice depending on the purpose. Ultra Fast Bit Labeller(UFBL) provides CCL algorithms work very fast on the format. As we shell see, it turns out to be almost as fast as the best CCL algorithms known up to now, if not slightly faster.
+Using 1-bit per pixel format on binary data not only saves memory, but also allows processing for multiple pixels at once. It can be the best choice depending on the purpose. Ultra Fast Bit Labeller(UFBL) provides CCL algorithms specialized for the format. Scientific research <a href="#BRTS">[1]</a> shows that UFBL algorithms on 1-bit per pixel format are much faster than all other CCL algorithms known at 2021 on their own preferred format. 
 
 
 
@@ -69,17 +69,22 @@ void Labeling_BMRS_X64(unsigned* dest, const void* source, int height, int width
 
 The last argument is a combination of flag bits which are to specify the format of the input data. The flags used with this parameter are defined in *Formats.h*. See following table for the names, meaning, and values of the flags.
 
-| Name                  | Meaning                                                      | Value      |
-| --------------------- | ------------------------------------------------------------ | ---------- |
-| BTCPR_FM_ALIGN_1      | Rows are aligned at byte boundary. Padding bits are inserted if the width of the image is not a multiple of 8. Ignored if `data_width` is nonzero. | 0x00000001 |
-| BTCPR_FM_ALIGN_2      | Rows are aligned at word boundary. Padding bits are inserted if the width of the image is not a multiple of 16. Ignored if `data_width` is nonzero. | 0x00000002 |
-| BTCPR_FM_ALIGN_4      | Rows are aligned at double word boundary. Padding bits are inserted if the width of the image is not a multiple of 32. Ignored if `data_width` is nonzero. | 0x00000004 |
-| BTCPR_FM_ALIGN_8      | Rows are aligned at quadruple word boundary. Padding bits are inserted if the width of the image is not a multiple of 64. Ignored if `data_width` is nonzero. | 0x00000008 |
-| BTCPR_FM_NO_ALIGN     | There is no padding bit between rows. Ignored if `data_width` is nonzero. | 0x00000000 |
-| BTCPR_FM_B1W0         | Bit 1 is black and 0 is white. Default is the other way round. This flag can also be used to perform CCL on black area of image, instead of usual white one. (If the source image does not use 0 as black. If it does, one can perform CCL on black area by *not* setting this flag.) | 0x80000000 |
-| BTCPR_FM_MSB_FIRST    | Bits in a byte are saved in most-significant-bit to least-significant-bit order so that it is consistent with the binary number notation. Default is the other way round. | 0x40000000 |
-| BTCPR_FM_PADDING_MSB  | Padding bits are at the most-significant area of the last byte. If the last bits are 1,0,0,1, the last byte will be 0b1001, instead of 0b10010000. Ignored if `BTCPR_FM_MSB_FIRST` is not setted. | 0x20000000 |
-| BTCPR_FM_PADDING_ZERO | Padding bits are filled with zero. If this flag is not setted, the padding bits can be filled with garbage bits. Ignored if the source data does not have padding bits. | 0x10000000 |
+| Name                   | Meaning                                                      | Value      |
+| ---------------------- | ------------------------------------------------------------ | ---------- |
+| BTCPR_FM_ALIGN_1       | Rows are aligned at byte boundary. Padding bits are inserted if the width of the image is not a multiple of 8. Ignored if `data_width` is nonzero. | 0x00000001 |
+| BTCPR_FM_ALIGN_2       | Rows are aligned at word boundary. Padding bits are inserted if the width of the image is not a multiple of 16. Ignored if `data_width` is nonzero. | 0x00000002 |
+| BTCPR_FM_ALIGN_4       | Rows are aligned at double word boundary. Padding bits are inserted if the width of the image is not a multiple of 32. Ignored if `data_width` is nonzero. | 0x00000004 |
+| BTCPR_FM_ALIGN_8       | Rows are aligned at quadruple word boundary. Padding bits are inserted if the width of the image is not a multiple of 64. Ignored if `data_width` is nonzero. | 0x00000008 |
+| BTCPR_FM_NO_ALIGN      | There is no padding bit between rows. Ignored if `data_width` is nonzero. | 0x00000000 |
+| BTCPR_FM_B1W0          | Bit 1 is black and 0 is white. Default is the other way round. This flag can also be used to perform CCL on black area of image, instead of usual white one. (If the source image does not use 0 as black. If it does, one can perform CCL on black area by *not* setting this flag.) | 0x80000000 |
+| BTCPR_FM_MSB_FIRST     | Bits in a byte are saved in most-significant-bit to least-significant-bit order so that it is consistent with the binary number notation. Default is the other way round. | 0x40000000 |
+| BTCPR_FM_PADDING_MSB   | Padding bits are at the most-significant area of the last byte. If the last bits are 1,0,0,1, the last byte will be 0b1001, instead of 0b10010000. Ignored if `BTCPR_FM_MSB_FIRST` is not setted. | 0x20000000 |
+| BTCPR_FM_PADDING_ZERO  | Padding bits are filled with zero. If this flag is not setted, the padding bits can be filled with garbage bits. Ignored if the source data does not have padding bits. | 0x10000000 |
+| BTCPR_FM_ZERO_BUF\*    | Output memory is already zero-initialized. UFBL algorithms can run faster is this is known for it can then skip the step. | 0x08000000 |
+| BTCPR_FM_NO_ZEROINIT\* | Recommended if input image has fine granularity and high (more than 40%) foreground pixel density. Without this flag, the output buffer will be zero-initialized collectively before the second scan so that background pixels can be skipped when write labels to the buffer. With this flag, background pixels in the output buffer will be set to zero during the second scan. | 0x04000000 |
+
+\*The last two options are not about input image format, but about initial state of the output buffer or specific stratege on writing labels to the buffer. 
+
 
 If user can choose which format to use, format `BTCPR_FM_ALIGN_8 | BTCPR_FM_PADDING_ZERO` is recommanded for x64 algorithms and format `BTCPR_FM_ALIGN_4 | BTCPR_FM_PADDING_ZERO` is recommanded for x86 algorithms. If the input data does not have this format, UFBL creates new data which are equivalent to the original but uses different format and perform main algorithm on the new data. The format change algorithm is fast and effective. It takes less than 2% of the total excution time. 
 
@@ -88,7 +93,9 @@ If user can choose which format to use, format `BTCPR_FM_ALIGN_8 | BTCPR_FM_PADD
 
 ## Benchmark
 
-UFBL is a project which orients fast execution speed. One may want to know how fast each of the algorithms work. Files in [benchmark/](benchmark) folder do not need to run UFBL algorithm. It's just a simple sample program using UFBL library of which purpose is at the correctness, performance test of each CCL algorithms.
+UFBL is a project which orients fast execution speed. One may want to know how fast each of the algorithms work. He can simply refer <a href="#BRTS">[1]</a> for this matter. (Unfortunately, the paper is incorrect on BRTS since the algorithm was not fully optimized yet.) Alternatively, he can use simple benchmark program provided here.
+
+Files in [benchmark/](benchmark) folder do not need to run UFBL algorithm. It's just a simple sample program using UFBL library of which purpose is at the correctness, performance test of each CCL algorithms.
 
  ![tst](doc/tst.png)
 
@@ -96,19 +103,53 @@ The benchmark program includes 5 different algorithm. The old [two-pass](https:/
 
 If there are no command line arguments, it makes a random 640 x 480 data, processes them using many CCL algorithms multiple times, and shows the execution time used for each. All algorithms except UFBL ones work on the original 4-byte per pixel format, while UFBL algorithms work on its compressed version which has 1-bit per pixel format.
 
-If 24-bit bitmap files and p4 pbm file are given as arguments, it does the same test on the input images. It also exports the result as another .bmp files. Each labels has distinguishable bright colors so one can easily check if the algorithm works correctly or not. 
+If 24-bit bitmap or p4 pbm files are given as arguments, it does the same test on the input images. It also exports the result as another .bmp files. Each labels has distinguishable bright colors so one can easily check if the algorithm works correctly or not. 
 
 
 
 ## YACCLAB results
 
-Files in [YACCLAB/](YACCLAB) folder allows test in [YACCLAB](https://github.com/prittt/YACCLAB) system. One must install the benchmark program first. 
+All of UFBL algorithms are also available at [YACCLAB](https://github.com/prittt/YACCLAB), so one can test the algorithms in their own system. Here is some results I got on my computers. 
 
-It's impossible to include UFBL algorithms directly in YACCLAB since they only use 1-byte per pixel format input. I had to make pseudo-UFBL algorithms which work on 1-byte per pixel format by adding an additional step which converts the format of the input image. All tests will be done on this pseudo-algorithms which are slower than the original because of this additional step.
+The benchmark only uses images of 1-byte per pixel formats as inputs. Therefore, UFBL algorithms provided here contain additional step for 1 byte to 1 bit per pixel conversion. The *average* tests also consider the time for the conversion. On the other hand, when performing *average with steps* tests conversion time is ignored.
 
-The folder also includes results I got on my computers. Surprisingly enough, even those pseudo-UFBL algorithms which are supposed to be slower than the original turn out to be almost as fast as some of the best algorithms currently (2021) known.
+The following charts show some results for *average with steps* tests I got on AMD Ryzen 3 2200G processor using [YACCLAB](https://github.com/prittt/YACCLAB). The algoritims in comparison are SAUF (Scan Array-based with Union Find, also known as two-scan), Spaghetti (state of the art when <a href="#BRTS">[1]</a> is published), and UFBL algorithms. Suffix XZ here means that `BTCPR_FM_NO_ZEROINIT` flag is setted.
 
-Here is some results I got on AMD Ryzen 3 2200G processor using [YACCLAB](https://github.com/prittt/YACCLAB). The rightmost two algorithms, Bit-Run Two Scan (BRTS) and Bit-Merge-Run Scan (BMRS) are the new algorithms introduced by UFBL.
+<table>
+  <tr>
+    <td align="center"><img src="doc/Ryzen3_2200G/mirflickr_with_steps.png"/></td>
+    <td align="center"><img src="doc/Ryzen3_2200G/hamlet_with_steps.png"/></td>
+  </tr>
+  <tr>
+    <td align="center">MIRflickr</td>
+    <td align="center">Hamlet</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="doc/Ryzen3_2200G/tobacco800_with_steps.png"/></td>
+    <td align="center"><img src="doc/Ryzen3_2200G/3dpes_with_steps.png"/></td>
+  </tr>
+  <tr>
+    <td align="center">Tobacco800</td>
+    <td align="center">3DPeS</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="doc/Ryzen3_2200G/medical_with_steps.png"/></td>
+    <td align="center"><img src="doc/Ryzen3_2200G/fingerprints_with_steps.png"/></td>
+  </tr>
+  <tr>
+    <td align="center">Medical</td>
+    <td align="center">Fingerprints</td>
+  </tr>
+  <tr>
+    <td align="center"><img src="doc/Ryzen3_2200G/xdocs_with_steps.png"/></td>
+    <td align="center"></td>
+  </tr>
+  <tr>
+    <td align="center">XDOCS</td>
+    <td align="center"></td>
+  </tr>
+</table>
+Interestingly enough, even in *average* tests disadvantageous to UFBL algorithms because of added conversion time, UFBL algorithms turn out to be faster than the state of art algorithm at early 2021 for some kind of inputs. This means that depending on the kind of inputs, using UFBL algorithms with format conversion can still be the most efficient way of CCL.
 
 <table>
   <tr>
@@ -144,10 +185,9 @@ Here is some results I got on AMD Ryzen 3 2200G processor using [YACCLAB](https:
     <td align="center"></td>
   </tr>
 </table>
+However, the results can be differ greatly according to on which processor or operating system the test is performed. For example, the test included in <a href="#BRTS">[1]</a> shows that Spagetti labeling is faster than both UFBL algorithms while the charts above show the opposite. See [YACCLAB/Results](YACCLAB/Results/) for more results I got on various computers.
 
-The result can be differ greatly according to on which processor the test is performed. The BRTS algorithm, performing surprisingly fast for some datasets here, never shows the same speed on Intel(R) Pentium(R) Gold G5420 @ 3.80GHz processor. See [YACCLAB/Results](YACCLAB/Results/) folder for the full results.
-
-The charts above also don't show the real shortcomings of the BRTS algorithm I had to deal with. It is best for images with relatively simple structure, but fails when the image is complex and contains a lot of noises. BMRS is designed as a solution for this. The chart below shows the result on random data in various granularity and foreground density.
+[YACCLAB](https://github.com/prittt/YACCLAB) also provides benchmark for random images with various granularity and foreground pixel density. It shows in which cases one should choose each UFBL algorithms. Here is some results I got on AMD Ryzen 3 2200G with Radeon Vega Graphics. Time for the format conversion is included. 
 
 <table>
   <tr>
@@ -155,7 +195,7 @@ The charts above also don't show the real shortcomings of the BRTS algorithm I h
     <td align="center"><img src="doc/Ryzen3_2200G/granularity2.png"/></td>
   </tr>
   <tr>
-    <td align="center">granularity 1</td>
+    <td align="center">granularity 1 (fine)</td>
     <td align="center">granularity 2</td>
   </tr>
   <tr>
@@ -164,10 +204,18 @@ The charts above also don't show the real shortcomings of the BRTS algorithm I h
   </tr>
   <tr>
     <td align="center">granularity 4</td>
-    <td align="center">granularity 8</td>
+    <td align="center">granularity 8 (coarse)</td>
   </tr>
 </table>
 
-For most random images with 50% foreground density and granularity 1, BMRS beats all of other known CCL algorithms (except GPU algorithms) by far margin. All of these results show that UFBL algorithms are not only good for processing bit-compressed data, but a competitive CCL algorithm in general. 
 
-See the documents [Labeling_BRTS.md](Labeling_BRTS.md) and [Labeling_BMRS.md](Labeling_BMRS.md) if you want to know exactly how UFBL algorithms work. Each algorithms are explained in those document in detail. Contributions of any kind are welcome. 
+
+## UFBL algorithms
+
+UFBL algorithms are based on the idea that CCL can be optimized using Find First Set hardware operations. See [Labeling_BRTS.md](Labeling_BRTS.md) and [Labeling_BMRS.md](Labeling_BMRS.md) for detailed explanations on how they work. Contributions of any kind are welcome. 
+
+
+
+## References
+
+<a name="BRTS">[1]</a> W. Lee, F. Bolelli, S. Allegretti, C. Grana. "Fast Run-Based Connected Components Labeling for Bitonal Images." 5th International Conference on Imaging, Vision & Pattern Recognition, 2021

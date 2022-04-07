@@ -374,9 +374,11 @@ void Bit_Source::Initialize(Byte_Source& byte_source, int _data_width, int _fmbi
 			}
 
 			m_dst[width_byte_full] = obits;
-			if (fmbits & BTCPR_FM_PADDING_ZERO) {
-				for (int i = width_byte_full + 1; i < data_width; i++) m_dst[i] = 0;
-			}
+		}
+
+		int fullpadding_start = (width_rem) ? width_byte_full + 1 : width_byte_full;
+		if (fmbits & BTCPR_FM_PADDING_ZERO) {
+			for (int i = fullpadding_start; i < data_width; i++) m_dst[i] = 0;
 		}
 	}
 }
@@ -411,7 +413,7 @@ void Bit_Source::Initialize_by_Rand(int _height, int _width, int _data_width, in
 			if (size_rem) {
 				unsigned char mask = (unsigned char)~(0xFFFFFFFF << size_rem);
 				data_compressed[size_byte_full] &= mask;
-			}
+			}	
 			return;
 		}
 	}
@@ -437,6 +439,11 @@ void Bit_Source::Initialize_by_Rand(int _height, int _width, int _data_width, in
 		if (width_rem) {
 			unsigned char mask = (unsigned char)~(0xFFFFFFFF << width_rem);
 			m_dst[width_byte_full] &= mask;
+		}
+
+		int fullpadding_start = (width_rem) ? width_byte_full + 1 : width_byte_full;
+		if (fmbits & BTCPR_FM_PADDING_ZERO) {
+			for (int i = fullpadding_start; i < data_width; i++) m_dst[i] = 0;
 		}
 	}
 }

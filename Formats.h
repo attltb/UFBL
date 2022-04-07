@@ -4,6 +4,9 @@ constexpr auto BTCPR_FM_B1W0 = 0x80000000;
 constexpr auto BTCPR_FM_MSB_FIRST = 0x40000000;
 constexpr auto BTCPR_FM_PADDING_MSB = 0x20000000;
 constexpr auto BTCPR_FM_PADDING_ZERO = 0x10000000;
+constexpr auto BTCPR_FM_ZERO_BUF = 0x08000000;
+constexpr auto BTCPR_FM_NO_ZEROINIT = 0x04000000;
+
 constexpr auto BTCPR_FM_NO_ALIGN = 0x00000000;
 constexpr auto BTCPR_FM_ALIGN_1 = 0x00000001;
 constexpr auto BTCPR_FM_ALIGN_2 = 0x00000002;

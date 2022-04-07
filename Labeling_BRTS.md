@@ -118,23 +118,25 @@ The total size of the run matadata may be big, but not absurdly so. it's just al
 The second scan is straightforward. It just write the label map using the run metadata previously generated. The code is as follow.
 
 ```C++
+memset(dest, 0, height * width * sizeof(unsigned));
+
 Run* runs = Data_run.runs;
 for (size_t i = 0; i < height; i++) {
 	unsigned* labels = dest + width * i;
 	for (size_t j = 0;; runs++) {
 		unsigned short start_pos = runs->start_pos;
 		if (start_pos == 0xFFFF) {
-			for (; j < width; j++) labels[j] = 0;
 			runs++;
 			break;
 		}
 		unsigned short end_pos = runs->end_pos;
 		unsigned label = labelsolver.GetLabel(runs->label);
-		for (; j < start_pos; j++) labels[j] = 0;
 		for (; j < end_pos; j++) labels[j] = label;
 	}
 }
 ```
+
+The output buffer is pre-initialized to zero using memset here so that background pixels can be skipped in the scan. However, this optimization can be rather inefficient if input image has fine granularity and high foreground pixel density. UFBL provide `BTCPR_FM_SETZERO_BUF` flag which turn off this optimization.
 
 Since it calls `GetLabel` only once per a run, this final step also run slightly faster than usual second pass of the two-pass algorithm, including the one used in original RBTS. 
 

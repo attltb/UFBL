@@ -113,7 +113,7 @@ int main(int argc, char* argv[]) {
 	}
 
 	//test with randomly generated cases
-	if (argc < 2) Test_Rand(481, 640);
+	if (argc < 2) Test_Rand(480, 640);
 
 	printf("Test end.");
 	int i = getchar();
