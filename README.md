@@ -4,7 +4,7 @@ Connected-component labeling (CCL) , which distinguish objects in an image by as
 
 Unfortunately, all of known algorithms for CCL require at least 1-byte per pixel data as input. There is no CCL algorithm available which can be directly applied to 1-bit per pixel format, which is most natural for binary image or data.
 
-Using 1-bit per pixel format on binary data not only saves memory, but also allows processing for multiple pixels at once. It can be the best choice depending on the purpose. Ultra Fast Bit Labeller(UFBL) provides CCL algorithms specialized for the format. Scientific research <a href="#BRTS">[1]</a> shows that UFBL algorithms on 1-bit per pixel format are much faster than all other CCL algorithms known at 2021 on their own preferred format. 
+Using 1-bit per pixel format on binary data not only saves memory, but also allows processing for multiple pixels at once. It can be the best choice depending on the purpose. Ultra Fast Bit Labeller(UFBL) provides CCL algorithms specialized for the format. Scientific study <a href="#BRTS">[1]</a> shows that UFBL algorithms on 1-bit per pixel format are much faster than all other CCL algorithms known at 2021 on their own preferred format. 
 
 
 
@@ -58,6 +58,7 @@ BRTS supports both 4-connectivity and 8-connectivity, while BMRS only supports 8
     <td align="center"><i>Labeling_BMRS_8c_x64.h</i>, <i>Labeling_BMRS_8c_x64.cpp</i></td>
   </tr>
 </table>
+
 To use BMRS algorithm in your 64-bit program, for example, you only have to include *Labeling_BMRS_8c_x64.h*, *Labeling_BMRS_8c_x64.cpp*, *Formats.h*, *Format_changer_X64.h* and *label_solver.h*  in your project. The converting function is declared in *Labeling_BMRS_8c_x64.h*. 
 
 ```C++
@@ -81,12 +82,32 @@ The last argument is a combination of flag bits which are to specify the format 
 | BTCPR_FM_PADDING_MSB   | Padding bits are at the most-significant area of the last byte. If the last bits are 1,0,0,1, the last byte will be 0b1001, instead of 0b10010000. Ignored if `BTCPR_FM_MSB_FIRST` is not setted. | 0x20000000 |
 | BTCPR_FM_PADDING_ZERO  | Padding bits are filled with zero. If this flag is not setted, the padding bits can be filled with garbage bits. Ignored if the source data does not have padding bits. | 0x10000000 |
 | BTCPR_FM_ZERO_BUF\*    | Output memory is already zero-initialized. UFBL algorithms can run faster if this is known for it can skip the zero-initializing part in the algorithms. | 0x08000000 |
-| BTCPR_FM_NO_ZEROINIT\* | Recommended if input image has fine granularity and high (more than 40%) foreground pixel density. Without this flag, the output buffer will be zero-initialized collectively before the second scan so that background pixels can be skipped when write labels to the buffer. With this flag, background pixels in the output buffer will be set to zero during the second scan. | 0x04000000 |
+| BTCPR_FM_NO_ZEROINIT\* | Recommended if input image has high foreground pixel density. Without this flag, the output buffer will be zero-initialized collectively before the second scan so that background pixels can be skipped when write labels to the buffer. With this flag, background pixels in the output buffer will be set to zero during the second scan. | 0x04000000 |
 
 \*The last two options are not about input image format, but about initial state of the output buffer or specific stratege on writing labels to the buffer. 
 
-
 If user can choose which format to use, format `BTCPR_FM_ALIGN_8 | BTCPR_FM_PADDING_ZERO` is recommanded for x64 algorithms and format `BTCPR_FM_ALIGN_4 | BTCPR_FM_PADDING_ZERO` is recommanded for x86 algorithms. If the input data does not have this format, UFBL creates new data which are equivalent to the original but uses different format and perform main algorithm on the new data. The format change algorithm is fast and effective. It takes less than 2% of the total excution time. 
+
+One may have interest on exactly how UFBL algorithms work. They are based on the idea that algorithms for CCL can be optimized using Find First Set hardware operations. See [Labeling_BRTS.md](Labeling_BRTS.md) and [Labeling_BMRS.md](Labeling_BMRS.md) for detailed explanations. 
+
+
+
+## How to use (on 1-byte per pixel data)
+
+UFBL also supports functions performing CCL on 1-byte per pixel data. They create intermediate 1-bit per pixel format data from the 1-byte per pixel input and apply the same UFBL algorithms on the intermediate data. 
+
+The functions on 1-byte per pixel data are a bit slower than those on 1-bit per pixel data because they contain additional step for 1-byte to 1-bit per pixel conversion. <a href="#BRTS">[1]</a> shows that UFBL algorithms with the format conversion is slightly slower than the state of the art algorithm at early 2021 for 8-connectivity.
+
+However, UFBL algorithms have their own advantage of relatively small size and simple nature. Furthermore, depending on which processor or operating system test is performed and what kind of input is used, UFBL algorithms often turn out to be even faster than the state of the art. Finally, for 4-connectivity which is relatively under-researched, UFBL algorithms are easily the fastest. All of these show that UFBL algorithms are not just specified on 1-bit per pixel format, but very competitive CCL algorithms which can be used regardless of the format of the input. 
+
+The functions for 1-byte per pixel data requires exactly same header and source files with their 1-bit per pixel versions. For example, the function for 4-connectivity BRTS4 for 64-bit program is declared in *Labeling_BRTS4_8c_x64.h* is as follows.
+
+```C++
+void Labeling_BRTS4_X64(unsigned* dest, const uint8_t* source, int height, int width
+                       , int data_width = 0, int fmbits = 0);
+```
+
+The meaning of the arguments are same with corresponding 1-bit per pixel function, except the second and the last argument. Here, `source` must be a pointer to the input data which saves 2D binary image in 1-byte per pixel format. For the last argument, only last two flags which are *not* related to the format of the input are used.
 
 
 
@@ -111,9 +132,9 @@ If 24-bit bitmap or p4 pbm files are given as arguments, it does the same test o
 
 All of UFBL algorithms are also available at [YACCLAB](https://github.com/prittt/YACCLAB), so one can test the algorithms in their own system. Here is some results I got on my computers. 
 
-The benchmark only uses images of 1-byte per pixel formats as inputs. Therefore, UFBL algorithms provided here contain additional step for 1 byte to 1 bit per pixel conversion. The *average* tests also consider the time for the conversion. On the other hand, when performing *average with steps* tests conversion time is ignored.
+The benchmark only uses images of 1-byte per pixel formats as inputs. Therefore, UFBL algorithms provided here contain additional step for the 1 byte to 1 bit per pixel conversion. The *average* tests also consider the time for the conversion. On the other hand, when performing *average with steps* tests conversion time is ignored.
 
-The following charts show some results for *average with steps* tests I got on AMD Ryzen 3 2200G processor using [YACCLAB](https://github.com/prittt/YACCLAB). The algoritims in comparison are SAUF (Scan Array-based with Union Find, also known as two-scan), Spaghetti (state of the art when <a href="#BRTS">[1]</a> is published), and UFBL algorithms. Suffix XZ here means that `BTCPR_FM_NO_ZEROINIT` flag is setted.
+The following charts show some results for *average with steps* tests I got on AMD Ryzen 3 2200G processor using [YACCLAB](https://github.com/prittt/YACCLAB). The algoritims in comparison are SAUF (Scan Array-based with Union Find, also known as two-scan), Spaghetti (Spaghetti Labelling, state of the art at early 2021), and UFBL algorithms. Suffix XZ here means that `BTCPR_FM_NO_ZEROINIT` flag is setted.
 
 <table>
   <tr>
@@ -149,7 +170,7 @@ The following charts show some results for *average with steps* tests I got on A
     <td align="center"></td>
   </tr>
 </table>
-Interestingly enough, even in *average* tests disadvantageous to UFBL algorithms because of added conversion time, UFBL algorithms turn out to be faster than the state of art algorithm at early 2021 for some kind of inputs. This means that depending on the kind of inputs, using UFBL algorithms with format conversion can still be the most efficient way of CCL.
+The following charts show results for *average* tests I got on the same AMD Ryzen 3 2200G processor using [YACCLAB](https://github.com/prittt/YACCLAB). Since *average* tests also consider the time for the 1 byte to 1 bit per pixel conversion, it can be used to test UFBL algorithms for 1-byte per pixel inputs. Interestingly enough, the charts show that UFBL algorithms are faster than Spagetti (the state of art algorithm at early 2021) for the majority of the cases here. 
 
 <table>
   <tr>
@@ -185,7 +206,8 @@ Interestingly enough, even in *average* tests disadvantageous to UFBL algorithms
     <td align="center"></td>
   </tr>
 </table>
-However, the results can be differ greatly according to on which processor or operating system the test is performed. For example, the test included in <a href="#BRTS">[1]</a> shows that Spagetti labeling is faster than both UFBL algorithms while the charts above show the opposite. See [YACCLAB/Results](YACCLAB/Results/) for more results I got on various computers.
+
+It should be noted that the results can be differ greatly according to on which processor or operating system the test is performed. For example, the test included in <a href="#BRTS">[1]</a> shows that the state of art algorithm at early 2021 is faster than both UFBL algorithms on Medical datasets, while the charts above show exactly the opposite. See [YACCLAB/Results](YACCLAB/Results/) for more results I got on various computers.
 
 [YACCLAB](https://github.com/prittt/YACCLAB) also provides benchmark for random images with various granularity and foreground pixel density. It shows in which cases one should choose each UFBL algorithms. Here is some results I got on AMD Ryzen 3 2200G with Radeon Vega Graphics. Time for the format conversion is included. 
 
@@ -207,15 +229,15 @@ However, the results can be differ greatly according to on which processor or op
     <td align="center">granularity 8 (coarse)</td>
   </tr>
 </table>
+The charts show that BRTS with the `BTCPR_FM_NO_ZEROINIT` flag always run slower than the one with the flag for fine granularity. The one with the flag gets faster for high foreground density only when the data is very coarse grained. In contrast, BMRS with the same flag gets faster when the data is very fine grained. For example, BMRS with the flag is faster than others by far for most random data with 50% foreground density. 
 
+Of course these results also can be differ greatly according to on which processor or operating system the test is performed. See [YACCLAB/Results](YACCLAB/Results/) for more results I got on various computers. Contributions of any kind are welcome. 
 
-
-## UFBL algorithms
-
-UFBL algorithms are based on the idea that CCL can be optimized using Find First Set hardware operations. See [Labeling_BRTS.md](Labeling_BRTS.md) and [Labeling_BMRS.md](Labeling_BMRS.md) for detailed explanations on how they work. Contributions of any kind are welcome. 
 
 
 
 ## References
 
 <a name="BRTS">[1]</a> W. Lee, F. Bolelli, S. Allegretti, C. Grana. "Fast Run-Based Connected Components Labeling for Bitonal Images." 5th International Conference on Imaging, Vision & Pattern Recognition, 2021
+
+<a name="SPAGHETTI">[2]</a> F. Bolelli, S. Allegretti, L. Baraldi, and C. Grana, "Spaghetti Labeling: Directed Acyclic Graphs for Block-Based Bonnected Components Labeling," IEEE Transactions on Image Processing, vol. 29, no. 1, pp. 1999-2012, 2019.
