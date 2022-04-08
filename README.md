@@ -80,7 +80,7 @@ The last argument is a combination of flag bits which are to specify the format 
 | BTCPR_FM_MSB_FIRST     | Bits in a byte are saved in most-significant-bit to least-significant-bit order so that it is consistent with the binary number notation. Default is the other way round. | 0x40000000 |
 | BTCPR_FM_PADDING_MSB   | Padding bits are at the most-significant area of the last byte. If the last bits are 1,0,0,1, the last byte will be 0b1001, instead of 0b10010000. Ignored if `BTCPR_FM_MSB_FIRST` is not setted. | 0x20000000 |
 | BTCPR_FM_PADDING_ZERO  | Padding bits are filled with zero. If this flag is not setted, the padding bits can be filled with garbage bits. Ignored if the source data does not have padding bits. | 0x10000000 |
-| BTCPR_FM_ZERO_BUF\*    | Output memory is already zero-initialized. UFBL algorithms can run faster is this is known for it can then skip the step. | 0x08000000 |
+| BTCPR_FM_ZERO_BUF\*    | Output memory is already zero-initialized. UFBL algorithms can run faster if this is known for it can skip the zero-initializing part in the algorithms. | 0x08000000 |
 | BTCPR_FM_NO_ZEROINIT\* | Recommended if input image has fine granularity and high (more than 40%) foreground pixel density. Without this flag, the output buffer will be zero-initialized collectively before the second scan so that background pixels can be skipped when write labels to the buffer. With this flag, background pixels in the output buffer will be set to zero during the second scan. | 0x04000000 |
 
 \*The last two options are not about input image format, but about initial state of the output buffer or specific stratege on writing labels to the buffer. 
