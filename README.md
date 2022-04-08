@@ -229,8 +229,8 @@ It should be noted that the results can be differ greatly according to on which 
     <td align="center">granularity 8 (coarse)</td>
   </tr>
 </table>
-The charts show that BRTS with the `BTCPR_FM_NO_ZEROINIT` flag always run slower than the one with the flag for fine granularity. The one with the flag gets faster for high foreground density only when the data is very coarse grained. In contrast, BMRS with the same flag gets faster when the data is very fine grained. For example, BMRS with the flag is faster than others by far for most random data with 50% foreground density. 
 
+The charts show that BRTS with the `BTCPR_FM_NO_ZEROINIT` flag always run slower than the one with the flag for fine granularity. The one with the flag gets faster for high foreground density only when the data is very coarse grained. In contrast, BMRS with the same flag gets faster when the data is very fine grained. For example, BMRS with the flag is faster than others by far for most random data with 50% foreground density. 
 
 
 Of course these results also can be differ greatly according to on which processor or operating system the test is performed. See [YACCLAB/Results](YACCLAB/Results/) for more results I got on various computers. Contributions of any kind are welcome. 
