@@ -170,6 +170,7 @@ The following charts show some results for *average with steps* tests I got on A
     <td align="center"></td>
   </tr>
 </table>
+
 The following charts show results for *average* tests I got on the same AMD Ryzen 3 2200G processor using [YACCLAB](https://github.com/prittt/YACCLAB). Since *average* tests also consider the time for the 1 byte to 1 bit per pixel conversion, it can be used to test UFBL algorithms for 1-byte per pixel inputs. Interestingly enough, the charts show that UFBL algorithms are faster than Spagetti (the state of art algorithm at early 2021) for the majority of the cases here. 
 
 <table>
