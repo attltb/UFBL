@@ -5,6 +5,63 @@
 #include <utility>
 #include <string.h>
 #include <stdlib.h>
+template <typename T> inline std::pair<const uint32_t*, int> CCL_Bit_Compressing_X86(const T* source, int height, int width, int data_width_src) {
+	if (!data_width_src) data_width_src = width * sizeof(T);
+	int dword_width_dst = width / 32 + 1;
+	uint32_t* bits = new uint32_t[height * dword_width_dst];
+
+	for (int i = 0; i < height; i++) {
+		uint32_t* mbits = bits + dword_width_dst * i;
+		const T* src = (const T*)((const uint8_t*)source + data_width_src * i);
+
+		for (int j = 0; j < width >> 5; j++) {
+			const T* base = source + (j << 5);
+			uint32_t obits = 0;
+			if (base[0]) obits |= 0x00000001;
+			if (base[1]) obits |= 0x00000002;
+			if (base[2]) obits |= 0x00000004;
+			if (base[3]) obits |= 0x00000008;
+			if (base[4]) obits |= 0x00000010;
+			if (base[5]) obits |= 0x00000020;
+			if (base[6]) obits |= 0x00000040;
+			if (base[7]) obits |= 0x00000080;
+			if (base[8]) obits |= 0x00000100;
+			if (base[9]) obits |= 0x00000200;
+			if (base[10]) obits |= 0x00000400;
+			if (base[11]) obits |= 0x00000800;
+			if (base[12]) obits |= 0x00001000;
+			if (base[13]) obits |= 0x00002000;
+			if (base[14]) obits |= 0x00004000;
+			if (base[15]) obits |= 0x00008000;
+			if (base[16]) obits |= 0x00010000;
+			if (base[17]) obits |= 0x00020000;
+			if (base[18]) obits |= 0x00040000;
+			if (base[19]) obits |= 0x00080000;
+			if (base[20]) obits |= 0x00100000;
+			if (base[21]) obits |= 0x00200000;
+			if (base[22]) obits |= 0x00400000;
+			if (base[23]) obits |= 0x00800000;
+			if (base[24]) obits |= 0x01000000;
+			if (base[25]) obits |= 0x02000000;
+			if (base[26]) obits |= 0x04000000;
+			if (base[27]) obits |= 0x08000000;
+			if (base[28]) obits |= 0x10000000;
+			if (base[29]) obits |= 0x20000000;
+			if (base[30]) obits |= 0x40000000;
+			if (base[31]) obits |= 0x80000000;
+			*mbits = obits, mbits++;
+		}
+
+		uint32_t obits_final = 0;
+		int jbase = width - (width % 32);
+		for (int j = 0; j < width % 32; j++) {
+			if (source[jbase + j]) obits_final |= ((uint32_t)1 << j);
+		}
+		*mbits = obits_final;
+	}
+	return std::make_pair(bits, dword_width_dst * 4);
+}
+
 inline std::pair<const uint32_t*, std::pair<int, int>> CCL_Bswap_X86(const void* source, int height, int width, int data_width_src, int fmbits) {
 	int dword_width_dst = width / 32;
 	uint32_t* dest = new uint32_t[height * dword_width_dst];
@@ -585,5 +642,4 @@ inline std::pair<const uint32_t*, int> CCL_Format_Change_X86(const void* source,
 	if (fmbits & BTCPR_FM_PADDING_ZERO) return std::make_pair((const uint32_t*)source, data_width / 4);
 	return CCL_Clear_Padding_X86(source, height, width, data_width / sizeof(long), fmbits);
 }
-
 #endif

@@ -1,5 +1,6 @@
+#include <cstdint>
 #include "Label_Solver.h"
-void Labeling_RBTS8(unsigned* dest, const unsigned int* source, int height, int width) {
+void Labeling_RBTS8(unsigned* dest, const uint8_t* source, int height, int width, int data_width, int fmbits) {
 	class RBTS8 {
 		struct Run {
 			unsigned short start_pos;
@@ -19,13 +20,15 @@ void Labeling_RBTS8(unsigned* dest, const unsigned int* source, int height, int 
 		};
 
 		unsigned* dest;
-		const unsigned int* source;
+		const uint8_t* source;
 		int height;
 		int width;
+		int data_width;
+		int fmbits;
 
 	public:
-		RBTS8(unsigned* _dest, const unsigned int* _source, int _height, int _width)
-			: dest(_dest), source(_source), height(_height), width(_width) {};
+		RBTS8(unsigned* _dest, const uint8_t* _source, int _height, int _width, int _data_width, int _fmbits)
+			: dest(_dest), source(_source), height(_height), width(_width), data_width(_data_width), fmbits(_fmbits) {};
 		void Perform()
 		{
 			//find runs
@@ -57,7 +60,7 @@ void Labeling_RBTS8(unsigned* dest, const unsigned int* source, int height, int 
 
 	private:
 		void FindRuns(Run* runs, UFPC& labelsolver) {
-			const unsigned int* pdata = source;
+			const uint8_t* pdata = source;
 			Run* runs_up = runs;
 
 			//process runs in the first row
@@ -86,7 +89,7 @@ void Labeling_RBTS8(unsigned* dest, const unsigned int* source, int height, int 
 			//process runs in the rests
 			for (int row = 1; row < height; row++) {
 				Run* runs_save = runs;
-				pdata += width;
+				pdata += data_width;
 				for (int i = 0;; runs++) {
 					//find starting position
 					for (;; i++) {
@@ -147,5 +150,5 @@ void Labeling_RBTS8(unsigned* dest, const unsigned int* source, int height, int 
 			labelsolver.Flatten();
 		}
 	};
-	RBTS8(dest, source, height, width).Perform();
+	RBTS8(dest, source, height, width, data_width, fmbits).Perform();
 }

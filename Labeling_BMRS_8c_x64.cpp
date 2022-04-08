@@ -480,3 +480,9 @@ void Labeling_BMRS_X64(unsigned* dest, const void* source, int height, int width
 	};
 	BMRS(dest, source, height, width, data_width, fmbits).Perform();
 };
+void Labeling_BMRS_on_byte_X64(unsigned* dest, const uint8_t* source, int height, int width, int data_width, int fmbits) {
+	std::pair<const uint64_t*, int> format_compressed = CCL_Bit_Compressing_X64(source, height, width, data_width);
+
+	Labeling_BMRS_X64(dest, format_compressed.first, height, width, format_compressed.second, BTCPR_FM_ALIGN_8 | BTCPR_FM_PADDING_ZERO | fmbits);
+	delete[] format_compressed.first;
+}

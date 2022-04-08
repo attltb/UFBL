@@ -262,3 +262,9 @@ void Labeling_BRTS8_X86(unsigned* dest, const void* source, int height, int widt
 	};
 	BRTS8(dest, source, height, width, data_width, fmbits).Perform();
 };
+void Labeling_BRTS8_on_byte_X86(unsigned* dest, const uint8_t* source, int height, int width, int data_width, int fmbits) {
+	std::pair<const uint32_t*, int> format_compressed = CCL_Bit_Compressing_X86(source, height, width, data_width);
+
+	Labeling_BRTS8_X86(dest, format_compressed.first, height, width, format_compressed.second, BTCPR_FM_ALIGN_4 | BTCPR_FM_PADDING_ZERO | fmbits);
+	delete[] format_compressed.first;
+}

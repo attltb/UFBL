@@ -22,13 +22,14 @@ public:
 class Bit_Source;
 class Byte_Source {
 public:
-	unsigned int* data;
+	uint8_t* data;
 	int height;
 	int width;
+	int data_width;
 
 public:
-	Byte_Source() : data(nullptr), height(0), width(0) {};
-	Byte_Source(unsigned int* _data, int _height, int _width) : data(_data), height(_height), width(_width) {};
+	Byte_Source() : data(nullptr), height(0), width(0), data_width(0) {};
+	Byte_Source(uint8_t* _data, int _height, int _width, int _data_width) : data(_data), height(_height), width(_width), data_width(_data_width) {};
 
 public:
 	void Initialize(Bit_Source& bit_source);
@@ -59,7 +60,7 @@ public:
 		if (data) delete[] data;
 	}
 };
-typedef void (*Byte_Algorithm) (unsigned int* dest, const unsigned int* source, int height, int width);
+typedef void (*Byte_Algorithm) (unsigned int* dest, const uint8_t* source, int height, int width, int data_width, int fmbits);
 typedef void (*Bit_Algorithm) (unsigned int* dest, const void* source, int height, int width, int data_width, int fmbits);
 
 LabelMap PerformLabeling(Byte_Algorithm byte_algorithm, Byte_Source& byte_source);

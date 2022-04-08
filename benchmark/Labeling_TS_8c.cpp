@@ -1,19 +1,22 @@
+#include <cstdint>
 #include "Label_Solver.h"
-void Labeling_TS8(unsigned* dest, const unsigned int* source, int height, int width) {
+void Labeling_TS8(unsigned* dest, const uint8_t* source, int height, int width, int data_width, int fmbits) {
 	class TS8 {
 		unsigned* dest;
-		const unsigned int* source;
+		const uint8_t* source;
 		int height;
 		int width;
+		int data_width;
+		int fmbits;
 
 	public:
-		TS8(unsigned* _dest, const unsigned int* _source, int _height, int _width)
-			: dest(_dest), source(_source), height(_height), width(_width) {};
+		TS8(unsigned* _dest, const uint8_t* _source, int _height, int _width, int _data_width, int _fmbits)
+			: dest(_dest), source(_source), height(_height), width(_width), data_width(_data_width), fmbits(_fmbits) {};
 		void Perform()
 		{
 			//initialize label state
 			for (int i = 0; i < height; i++) {
-				const unsigned int* datas = source + i * width;
+				const uint8_t* datas = source + i * data_width;
 				unsigned int* labels = dest + i * width;
 				for (int j = 0; j < width; j++) {
 					if (datas[j]) labels[j] = 1;
@@ -117,5 +120,5 @@ void Labeling_TS8(unsigned* dest, const unsigned int* source, int height, int wi
 			labelsolver.Flatten();
 		}
 	};
-	TS8(dest, source, height, width).Perform();
+	TS8(dest, source, height, width, data_width, fmbits).Perform();
 }
